@@ -1,0 +1,6 @@
+{
+  "checks": {
+    "SingleUseVariableValue": false,
+    "ImportAll": false
+  }
+}

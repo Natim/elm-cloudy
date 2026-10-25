@@ -1,0 +1,24 @@
+{
+    "type": "application",
+    "source-directories": [
+        "src",
+        "../src",
+        "../../elm-cloudy-http-client/src"
+    ],
+    "elm-version": "0.19.1",
+    "dependencies": {
+        "direct": {
+            "elm/core": "1.0.5",
+            "elm/json": "1.1.4"
+        },
+        "indirect": {}
+    },
+    "test-dependencies": {
+        "direct": {
+            "elm-explorations/test": "2.2.0"
+        },
+        "indirect": {
+            "elm/random": "1.0.0"
+        }
+    }
+}

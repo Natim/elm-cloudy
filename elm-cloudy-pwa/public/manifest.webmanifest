@@ -1,0 +1,19 @@
+{
+  "name": "Cloudy carnet",
+  "short_name": "Cloudy",
+  "description": "Saisie rapide de vols Cloudy, hors ligne.",
+  "start_url": "/elm-cloudy/",
+  "scope": "/elm-cloudy/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "lang": "fr",
+  "icons": [
+    {
+      "src": "/elm-cloudy/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

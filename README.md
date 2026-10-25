@@ -1,57 +1,37 @@
 # elm-cloudy
 
-Elm client for the [Cloudy](https://www.cloudy.fr) logbook REST API (`/api/v1`), inspired by [elm-kinto](https://github.com/Kinto/elm-kinto).
+Elm tooling for [Cloudy](https://www.cloudy.fr) pilot logbooks.
 
-## Install
+| Project | Description |
+| --- | --- |
+| [`elm-cloudy-http-client/`](elm-cloudy-http-client/) | Published-style Elm package `Natim/elm-cloudy`: types and HTTP client for `/api/v1`. |
+| [`elm-cloudy-pwa/`](elm-cloudy-pwa/) | Offline-first mobile PWA that uses the http client. Deployed to [GitHub Pages](https://natim.github.io/elm-cloudy/). |
 
-```bash
-elm install Natim/elm-cloudy
-```
+## Quick start
 
-Or add a dependency on this repository in `elm.json` while the package is unpublished.
-
-## Layers
-
-- **`Cloudy.Data`** — types and JSON codecs (no HTTP).
-- **`Cloudy.Client`**, **`Cloudy.Request`**, **`Cloudy`** — configure a client, build requests, and `send` / `sendEmpty`.
-
-Per logbook category, log and report records live under `Cloudy.Data.Log.*` and `Cloudy.Data.Report.*` (generated from OpenAPI).
-
-## Quick example
-
-```elm
-import Cloudy
-import Cloudy.Client as Client
-import Cloudy.Request as Request
-
-login : Cmd Msg
-login =
-    Client.default
-        |> Request.send GotToken
-        |> (\_ -> Cmd.none)
-```
-
-Typical flow:
-
-1. `Cloudy.token client { email, password }` → `Request TokenResponse`
-2. `Client.withBearer accessToken client` for authenticated calls
-3. `Cloudy.listLogbooks`, `Cloudy.listLogs`, `Cloudy.createLog`, etc.
-4. `Request.send` for JSON responses; `Request.sendEmpty` for `DELETE` (204)
-
-OpenAPI snapshot: [`vendor/cloudy-openapi.json`](vendor/cloudy-openapi.json). Regenerate Elm types:
+**HTTP client**
 
 ```bash
-python3 scripts/generate_elm.py
+cd elm-cloudy-http-client
+elm make src/Cloudy.elm --output=/dev/null
+cd tests && elm-test src/Tests.elm
 ```
 
-## Development
+**PWA (development)**
 
 ```bash
-elm-format --validate src/
-elm make src/Cloudy.elm
-cd tests && elm-test
+cd elm-cloudy-pwa
+npm install
+npm run dev
+```
+
+**PWA (production build)**
+
+```bash
+cd elm-cloudy-pwa
+npm run build
 ```
 
 ## License
 
-AGPL-3.0 (same family as Cloudy).
+AGPL-3.0 (see [LICENSE](LICENSE)).

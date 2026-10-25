@@ -1,2 +1,6 @@
-elm-stuff/
+**/elm-stuff/
+node_modules/
+dist/
+elm-cloudy-pwa/public/elm.js
 .DS_Store
+.bin/

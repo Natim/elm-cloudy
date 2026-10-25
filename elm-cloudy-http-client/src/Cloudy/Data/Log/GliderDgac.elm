@@ -22,9 +22,9 @@ type alias Log =
     , dual_minutes : Int
     , pilot_in_command_minutes : Int
     , instructor_minutes : Int
-    , function_on_board : Int
-    , flight_nature : Int
-    , lmode : Int
+    , function_on_board : String
+    , flight_nature : String
+    , lmode : String
     , observations : String
     , comments : String
     , takeoff_count : Int
@@ -44,9 +44,9 @@ type alias Patch =
     , dual_minutes : Maybe Int
     , pilot_in_command_minutes : Maybe Int
     , instructor_minutes : Maybe Int
-    , function_on_board : Maybe Int
-    , flight_nature : Maybe Int
-    , lmode : Maybe Int
+    , function_on_board : Maybe String
+    , flight_nature : Maybe String
+    , lmode : Maybe String
     , observations : Maybe String
     , comments : Maybe String
     , takeoff_count : Maybe Int
@@ -73,9 +73,9 @@ decoder =
         |> required "dual_minutes" Decode.int
         |> required "pilot_in_command_minutes" Decode.int
         |> required "instructor_minutes" Decode.int
-        |> required "function_on_board" Decode.int
-        |> required "flight_nature" Decode.int
-        |> required "lmode" Decode.int
+        |> required "function_on_board" Decode.string
+        |> required "flight_nature" Decode.string
+        |> required "lmode" Decode.string
         |> required "observations" Decode.string
         |> required "comments" Decode.string
         |> required "takeoff_count" Decode.int
@@ -121,9 +121,9 @@ encodeReplace record =
         , ( "dual_minutes", Encode.int record.dual_minutes )
         , ( "pilot_in_command_minutes", Encode.int record.pilot_in_command_minutes )
         , ( "instructor_minutes", Encode.int record.instructor_minutes )
-        , ( "function_on_board", Encode.int record.function_on_board )
-        , ( "flight_nature", Encode.int record.flight_nature )
-        , ( "lmode", Encode.int record.lmode )
+        , ( "function_on_board", Encode.string record.function_on_board )
+        , ( "flight_nature", Encode.string record.flight_nature )
+        , ( "lmode", Encode.string record.lmode )
         , ( "observations", Encode.string record.observations )
         , ( "comments", Encode.string record.comments )
         , ( "takeoff_count", Encode.int record.takeoff_count )
@@ -145,9 +145,9 @@ encodePatch record =
             , maybeMap record.dual_minutes (\v -> ( "dual_minutes", Encode.int v ))
             , maybeMap record.pilot_in_command_minutes (\v -> ( "pilot_in_command_minutes", Encode.int v ))
             , maybeMap record.instructor_minutes (\v -> ( "instructor_minutes", Encode.int v ))
-            , maybeMap record.function_on_board (\v -> ( "function_on_board", Encode.int v ))
-            , maybeMap record.flight_nature (\v -> ( "flight_nature", Encode.int v ))
-            , maybeMap record.lmode (\v -> ( "lmode", Encode.int v ))
+            , maybeMap record.function_on_board (\v -> ( "function_on_board", Encode.string v ))
+            , maybeMap record.flight_nature (\v -> ( "flight_nature", Encode.string v ))
+            , maybeMap record.lmode (\v -> ( "lmode", Encode.string v ))
             , maybeMap record.observations (\v -> ( "observations", Encode.string v ))
             , maybeMap record.comments (\v -> ( "comments", Encode.string v ))
             , maybeMap record.takeoff_count (\v -> ( "takeoff_count", Encode.int v ))

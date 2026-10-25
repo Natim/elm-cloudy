@@ -10,6 +10,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: elm-tooling/setup-elm@v3
-      - run: elm-format --validate src/
-      - run: elm make src/Cloudy.elm --output=/dev/null
-      - run: cd tests && elm-test src/Tests.elm
+        with:
+          elm-version: 0.19.1
+      - name: HTTP client
+        run: |
+          elm-format --validate elm-cloudy-http-client/src/
+          elm make elm-cloudy-http-client/src/Cloudy.elm --output=/dev/null
+          cd elm-cloudy-http-client/tests && elm-test src/Tests.elm
+      - name: PWA dependencies
+        working-directory: elm-cloudy-pwa
+        run: npm ci
+      - name: PWA Elm
+        run: |
+          elm-format --validate elm-cloudy-pwa/src/
+          cd elm-cloudy-pwa && npm run build:elm
+          cd elm-cloudy-pwa && npm test
+      - name: elm-analyse
+        run: |
+          cd elm-cloudy-pwa && npx elm-analyse
+          cd elm-cloudy-http-client/tests && ../elm-cloudy-pwa/node_modules/.bin/elm-analyse
+      - name: PWA production build
+        working-directory: elm-cloudy-pwa
+        run: npm run build

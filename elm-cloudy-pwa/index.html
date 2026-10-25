@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f172a" />
+    <link rel="manifest" href="/elm-cloudy/manifest.webmanifest" />
+    <link rel="stylesheet" href="/elm-cloudy/styles.css" />
+    <title>Cloudy — carnet de vol</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="/elm-cloudy/ports.js"></script>
+    <script src="/elm-cloudy/elm.js"></script>
+    <script>
+      var app = Elm.Main.init({ node: document.getElementById("app"), flags: null });
+      if (window.__cloudyPortsReady) {
+        window.__cloudyPortsReady(app);
+      }
+    </script>
+    <script>
+      if ("serviceWorker" in navigator && location.pathname.startsWith("/elm-cloudy")) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker.register("/elm-cloudy/sw.js", { scope: "/elm-cloudy/" });
+        });
+      }
+    </script>
+  </body>
+</html>
