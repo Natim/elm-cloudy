@@ -307,11 +307,18 @@ update msg model =
                     let
                         client =
                             Session.toClient session
+
+                        generation =
+                            model.logFetchId + 1
                     in
-                    ( { model | busy = True }
+                    ( { model
+                        | busy = True
+                        , logFetchId = generation
+                        , logPaging = Just logbookId
+                        , logsPartial = abandonPaging model logbookId
+                      }
                     , Cmd.batch
-                        [ Cloudy.listLogs client book.category logbookId { limit = Just 100, pageToken = Nothing, dateFrom = Nothing, dateTo = Nothing }
-                            |> Request.send (GotLogsPage logbookId book.category)
+                        [ fetchLogsPage client book.category logbookId generation Nothing
                         , Cloudy.getReports client book.category logbookId
                             |> Request.send (GotReports logbookId)
                         ]
@@ -327,44 +334,74 @@ update msg model =
                         Just _ ->
                             ( model, Cmd.none )
 
-        GotLogsPage logbookId category result ->
-            case result of
-                Ok page ->
-                    let
-                        merged =
-                            mergePage category page
+        GotLogsPage logbookId category generation pageToken result ->
+            if generation /= model.logFetchId then
+                ( model, Cmd.none )
 
-                        key =
-                            String.fromInt logbookId
+            else
+                case result of
+                    Ok page ->
+                        let
+                            key =
+                                String.fromInt logbookId
 
-                        pending =
-                            Dict.get key model.logs
-                                |> Maybe.withDefault []
-                                |> List.filter (\log -> log.syncStatus /= Synced)
+                            logs =
+                                Dict.insert key (appendLogPage key (pageToken == Nothing) (mergePage category page) model.logs) model.logs
 
-                        logs =
-                            Dict.insert key (pending ++ merged) model.logs
-                    in
-                    ( { model | logs = logs, busy = False, error = Nothing }
-                    , persistLogs logs
-                    )
-
-                Err err ->
-                    if unauthorized err then
-                        update Logout { model | busy = False }
-
-                    else
-                        ( { model
-                            | busy = False
-                            , error =
-                                if showsFlights model.route logbookId then
-                                    Just (httpErrorMessage "vols" err)
+                            busy =
+                                if pageToken == Nothing then
+                                    False
 
                                 else
-                                    model.error
-                          }
-                        , Cmd.none
-                        )
+                                    model.busy
+
+                            loaded =
+                                { model | logs = logs, error = Nothing, busy = busy }
+                        in
+                        case page.nextPageToken of
+                            Just nextToken ->
+                                case model.session of
+                                    Just session ->
+                                        ( { loaded | logPaging = Just logbookId }
+                                        , Cmd.batch
+                                            [ persistLogs logs
+                                            , fetchLogsPage (Session.toClient session) category logbookId generation (Just nextToken)
+                                            ]
+                                        )
+
+                                    Nothing ->
+                                        ( { loaded | logPaging = Nothing, logsPartial = Just logbookId }
+                                        , persistLogs logs
+                                        )
+
+                            Nothing ->
+                                ( { loaded | logPaging = Nothing, logsPartial = clearPartial model.logsPartial logbookId }
+                                , persistLogs logs
+                                )
+
+                    Err err ->
+                        if unauthorized err then
+                            update Logout { model | busy = False, logPaging = Nothing }
+
+                        else
+                            ( { model
+                                | busy = False
+                                , logPaging = Nothing
+                                , logsPartial =
+                                    if pageToken == Nothing then
+                                        model.logsPartial
+
+                                    else
+                                        Just logbookId
+                                , error =
+                                    if showsFlights model.route logbookId then
+                                        Just (httpErrorMessage "vols" err)
+
+                                    else
+                                        model.error
+                              }
+                            , Cmd.none
+                            )
 
         GotReports logbookId result ->
             case result of
@@ -1010,6 +1047,9 @@ update msg model =
                 , aircraft = Dict.empty
                 , aircraftEditor = Nothing
                 , pendingAircraft = Nothing
+                , logFetchId = 0
+                , logPaging = Nothing
+                , logsPartial = Nothing
               }
             , Cmd.batch
                 [ Ports.storageSaveSession Encode.null
@@ -1386,6 +1426,56 @@ setEditorDate isoDay editor =
 findLogbook : Model -> Int -> Maybe Logbook.Logbook
 findLogbook model id =
     List.filter (\b -> b.id == id) model.logbooks |> List.head
+
+
+fetchLogsPage : Client.Client -> LogbookCategory.LogbookCategory -> Int -> Int -> Maybe String -> Cmd Msg
+fetchLogsPage client category logbookId generation pageToken =
+    Cloudy.listLogs client category logbookId { limit = Just 100, pageToken = pageToken, dateFrom = Nothing, dateTo = Nothing }
+        |> Request.send (GotLogsPage logbookId category generation pageToken)
+
+
+abandonPaging : Model -> Int -> Maybe Int
+abandonPaging model logbookId =
+    case model.logPaging of
+        Just pagingId ->
+            if pagingId == logbookId then
+                Nothing
+
+            else
+                Just pagingId
+
+        Nothing ->
+            clearPartial model.logsPartial logbookId
+
+
+clearPartial : Maybe Int -> Int -> Maybe Int
+clearPartial partial logbookId =
+    if partial == Just logbookId then
+        Nothing
+
+    else
+        partial
+
+
+appendLogPage : String -> Bool -> List LocalLog -> Dict.Dict String (List LocalLog) -> List LocalLog
+appendLogPage key replace incoming logs =
+    let
+        existing =
+            Dict.get key logs |> Maybe.withDefault []
+
+        pending =
+            List.filter (\log -> log.syncStatus /= Synced) existing
+
+        previous =
+            List.filter (\log -> log.syncStatus == Synced) existing
+    in
+    pending
+        ++ (if replace then
+                incoming
+
+            else
+                previous ++ incoming
+           )
 
 
 mergePage : LogbookCategory.LogbookCategory -> LogListPage -> List LocalLog

@@ -273,7 +273,7 @@ dashboardView model =
                         { title = "Bonjour " ++ Shell.displayName email
                         , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
                         , summary = Stats.summarize logs (Dict.get (String.fromInt book.id) model.reports)
-                        , truncated = List.length logs >= 100
+                        , coverage = logCoverage model book.id
                         , onNewFlight = StartNewLog book.id
                         , onAircraft = OpenAircraft
                         }
@@ -368,6 +368,18 @@ aircraftOf model logbookId =
     Dict.get (String.fromInt logbookId) model.aircraft
         |> Maybe.withDefault []
         |> List.sortBy (\plane -> String.toUpper plane.registration)
+
+
+logCoverage : Model -> Int -> StatsView.Coverage
+logCoverage model logbookId =
+    if model.logPaging == Just logbookId then
+        StatsView.LoadingMore
+
+    else if model.logsPartial == Just logbookId then
+        StatsView.Incomplete
+
+    else
+        StatsView.Complete
 
 
 apiBaseUrl : Model -> String

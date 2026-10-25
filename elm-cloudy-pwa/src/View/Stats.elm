@@ -1,4 +1,4 @@
-module View.Stats exposing (view)
+module View.Stats exposing (Coverage(..), view)
 
 import Html exposing (Html, button, div, h2, p, span, text)
 import Html.Attributes exposing (class, type_)
@@ -7,11 +7,17 @@ import Stats exposing (AircraftTotal, Summary)
 import TimeFormat
 
 
+type Coverage
+    = Complete
+    | LoadingMore
+    | Incomplete
+
+
 view :
     { title : String
     , subtitle : String
     , summary : Summary
-    , truncated : Bool
+    , coverage : Coverage
     , onNewFlight : msg
     , onAircraft : msg
     }
@@ -51,7 +57,7 @@ stat label value =
         ]
 
 
-caption : { a | summary : Summary, truncated : Bool } -> String
+caption : { a | summary : Summary, coverage : Coverage } -> String
 caption config =
     let
         source =
@@ -61,11 +67,15 @@ caption config =
             else
                 "Chiffres calculés sur les vols enregistrés sur cet appareil."
     in
-    if config.truncated then
-        source ++ " La répartition par type porte sur les 100 derniers vols chargés."
+    case config.coverage of
+        Complete ->
+            source
 
-    else
-        source
+        LoadingMore ->
+            source ++ " La suite du carnet est en cours de chargement."
+
+        Incomplete ->
+            source ++ " La suite du carnet n'a pas pu être chargée."
 
 
 aircraftCard : List AircraftTotal -> Html msg

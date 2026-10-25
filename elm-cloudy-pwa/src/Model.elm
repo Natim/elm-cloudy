@@ -47,6 +47,9 @@ type alias Model =
     , pendingAircraft : Maybe ( Int, Int )
     , error : Maybe String
     , busy : Bool
+    , logFetchId : Int
+    , logPaging : Maybe Int
+    , logsPartial : Maybe Int
     , storageReady : Bool
     , pendingNew : Maybe ( Int, LogbookCategory )
     }
@@ -98,7 +101,7 @@ type Msg
     | SelectLogbook Int
     | BackToLogbooks
     | RefreshLogs Int
-    | GotLogsPage Int LogbookCategory (Result Http.Error LogListPage.LogListPage)
+    | GotLogsPage Int LogbookCategory Int (Maybe String) (Result Http.Error LogListPage.LogListPage)
     | GotReports Int (Result Http.Error ReportEntry)
     | StartNewLog Int
     | NowReceived String
@@ -157,6 +160,9 @@ init _ url key =
       , pendingAircraft = Nothing
       , error = Nothing
       , busy = False
+      , logFetchId = 0
+      , logPaging = Nothing
+      , logsPartial = Nothing
       , storageReady = False
       , pendingNew = Nothing
       }
