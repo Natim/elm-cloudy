@@ -11,7 +11,6 @@ import View.Icon as Icon
 type Section
     = SecDashboard
     | SecFlights
-    | SecLogbooks
     | SecAircraft
 
 
@@ -28,7 +27,6 @@ type alias Config msg =
     , onSelectLogbook : String -> msg
     , onDashboard : msg
     , onFlights : msg
-    , onLogbooks : msg
     , onAircraft : msg
     , onLogout : msg
     }
@@ -67,8 +65,6 @@ view config content =
             , Html.nav [ class "nav" ]
                 [ navButton config SecDashboard config.onDashboard Icon.dashboard "Tableau de bord"
                 , navButton config SecFlights config.onFlights Icon.flights "Vols"
-                , navButton config SecLogbooks config.onLogbooks Icon.book "Carnets"
-                , p [ class "nav-label" ] [ text "Outils" ]
                 , navButton config SecAircraft config.onAircraft Icon.aircraft "Avions"
                 ]
             , div [ class "sidebar-foot" ]

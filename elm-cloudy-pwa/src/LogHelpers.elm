@@ -1,4 +1,16 @@
-module LogHelpers exposing (addFile, emptyEntry, files, flightDate, logbookId, registration, serverId, setFlightDate, title)
+module LogHelpers exposing
+    ( AircraftFields
+    , addFile
+    , applyRegistration
+    , emptyEntry
+    , files
+    , flightDate
+    , logbookId
+    , registration
+    , serverId
+    , setFlightDate
+    , title
+    )
 
 import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry(..))
@@ -179,6 +191,71 @@ setFlightDate value entry =
 
         ParachuteCloudyEntry log ->
             ParachuteCloudyEntry { log | flight_date = value }
+
+
+type alias AircraftFields =
+    { registration : String
+    , aircraftType : String
+    , departure : String
+    , arrival : String
+    }
+
+
+applyRegistration :
+    List { a | registration : String, aircraftType : Maybe String, airport : Maybe String }
+    -> String
+    -> AircraftFields
+    -> AircraftFields
+applyRegistration planes raw current =
+    case matchingPlane planes raw of
+        Nothing ->
+            { current | registration = raw }
+
+        Just plane ->
+            { registration = plane.registration
+            , aircraftType = filled plane.aircraftType current.aircraftType
+            , departure = filled plane.airport current.departure
+            , arrival = filled plane.airport current.arrival
+            }
+
+
+matchingPlane :
+    List { a | registration : String, aircraftType : Maybe String, airport : Maybe String }
+    -> String
+    -> Maybe { a | registration : String, aircraftType : Maybe String, airport : Maybe String }
+matchingPlane planes raw =
+    let
+        key =
+            normalizeRegistration raw
+    in
+    if key == "" then
+        Nothing
+
+    else
+        planes
+            |> List.filter (\plane -> normalizeRegistration plane.registration == key)
+            |> List.head
+
+
+filled : Maybe String -> String -> String
+filled maybe current =
+    case maybe |> Maybe.map String.trim of
+        Just value ->
+            if value == "" then
+                current
+
+            else
+                value
+
+        Nothing ->
+            current
+
+
+normalizeRegistration : String -> String
+normalizeRegistration value =
+    value
+        |> String.trim
+        |> String.toUpper
 
 
 title : LogEntry -> String

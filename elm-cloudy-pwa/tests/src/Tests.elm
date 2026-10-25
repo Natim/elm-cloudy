@@ -89,6 +89,56 @@ all =
                         []
                         (Outbox.dropHead [ Outbox.DeleteOp { logbookId = 1, serverId = 2 } ])
             ]
+        , describe "LogHelpers"
+            [ test "selecting a registration fills type and both airports" <|
+                \_ ->
+                    let
+                        filled =
+                            LogHelpers.applyRegistration
+                                [ { registration = "F-GAAA", aircraftType = Just "DR400", airport = Just "LFPN" } ]
+                                "f-gaaa"
+                                { registration = "", aircraftType = "", departure = "", arrival = "" }
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal "F-GAAA" filled.registration
+                        , \_ -> Expect.equal "DR400" filled.aircraftType
+                        , \_ -> Expect.equal "LFPN" filled.departure
+                        , \_ -> Expect.equal "LFPN" filled.arrival
+                        ]
+                        ()
+            , test "an unknown registration leaves type and airports unchanged" <|
+                \_ ->
+                    let
+                        filled =
+                            LogHelpers.applyRegistration
+                                [ { registration = "F-GAAA", aircraftType = Just "DR400", airport = Just "LFPN" } ]
+                                "F-ZZZZ"
+                                { registration = "", aircraftType = "C172", departure = "LFPO", arrival = "LFPG" }
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal "F-ZZZZ" filled.registration
+                        , \_ -> Expect.equal "C172" filled.aircraftType
+                        , \_ -> Expect.equal "LFPO" filled.departure
+                        , \_ -> Expect.equal "LFPG" filled.arrival
+                        ]
+                        ()
+            , test "blank aircraft details do not erase fields already entered" <|
+                \_ ->
+                    let
+                        filled =
+                            LogHelpers.applyRegistration
+                                [ { registration = "F-GAAA", aircraftType = Nothing, airport = Just "  " } ]
+                                "F-GAAA"
+                                { registration = "", aircraftType = "C172", departure = "LFPO", arrival = "LFPG" }
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal "F-GAAA" filled.registration
+                        , \_ -> Expect.equal "C172" filled.aircraftType
+                        , \_ -> Expect.equal "LFPO" filled.departure
+                        , \_ -> Expect.equal "LFPG" filled.arrival
+                        ]
+                        ()
+            ]
         , describe "Stats"
             [ test "block time ignores instrument and groups by registration" <|
                 \_ ->

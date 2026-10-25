@@ -1,5 +1,6 @@
 module View.Editor exposing (view)
 
+import Cloudy.Data.Aircraft exposing (Aircraft)
 import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.BalloonDgac as BalloonDgac
@@ -32,13 +33,13 @@ type alias FilesInput msg =
     }
 
 
-view : LogEntry -> DateInput msg -> FilesInput msg -> (LogEntry -> msg) -> msg -> msg -> Html msg
-view entry dates filesInput onChange onSave onCancel =
+view : List Aircraft -> LogEntry -> DateInput msg -> FilesInput msg -> (LogEntry -> msg) -> msg -> msg -> Html msg
+view planes entry dates filesInput onChange onSave onCancel =
     div [ class "editor" ]
         [ div [ class "card" ]
             [ h1 [] [ text "Vol" ]
             , filesField filesInput (LogHelpers.files entry)
-            , body entry dates onChange
+            , body planes entry dates onChange
             , div [ class "form-actions" ]
                 [ button [ type_ "button", class "btn", onClick onSave ] [ text "Enregistrer" ]
                 , button [ type_ "button", class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
@@ -47,37 +48,51 @@ view entry dates filesInput onChange onSave onCancel =
         ]
 
 
-body : LogEntry -> DateInput msg -> (LogEntry -> msg) -> Html msg
-body entry dates onChange =
+body : List Aircraft -> LogEntry -> DateInput msg -> (LogEntry -> msg) -> Html msg
+body planes entry dates onChange =
     case entry of
         PlaneDgacEntry log ->
-            planeForm log dates (\l -> onChange (PlaneDgacEntry l))
+            planeForm planes log dates (\l -> onChange (PlaneDgacEntry l))
 
         HelicopterDgacEntry log ->
-            planeForm log dates (\l -> onChange (HelicopterDgacEntry l))
+            planeForm planes log dates (\l -> onChange (HelicopterDgacEntry l))
 
         GliderDgacEntry log ->
-            gliderForm log dates (\l -> onChange (GliderDgacEntry l))
+            gliderForm planes log dates (\l -> onChange (GliderDgacEntry l))
 
         PlaneFcl1080Entry log ->
-            fclForm log dates (\l -> onChange (PlaneFcl1080Entry l))
+            fclForm planes log dates (\l -> onChange (PlaneFcl1080Entry l))
 
         UlmFfplumEntry log ->
-            ulmForm log dates (\l -> onChange (UlmFfplumEntry l))
+            ulmForm planes log dates (\l -> onChange (UlmFfplumEntry l))
 
         BalloonDgacEntry log ->
-            balloonForm log dates (\l -> onChange (BalloonDgacEntry l))
+            balloonForm planes log dates (\l -> onChange (BalloonDgacEntry l))
 
         ParachuteCloudyEntry log ->
             parachuteForm log dates (\l -> onChange (ParachuteCloudyEntry l))
 
 
-planeForm : PlaneDgac.Log -> DateInput msg -> (PlaneDgac.Log -> msg) -> Html msg
-planeForm log dates onChange =
+planeForm : List Aircraft -> PlaneDgac.Log -> DateInput msg -> (PlaneDgac.Log -> msg) -> Html msg
+planeForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-        , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+        , registrationField planes
+            { registration = log.aircraft_registration
+            , aircraftType = log.aircraft_type
+            , departure = log.departure_airport
+            , arrival = log.arrival_airport
+            }
+            (\filled ->
+                onChange
+                    { log
+                        | aircraft_registration = filled.registration
+                        , aircraft_type = filled.aircraftType
+                        , departure_airport = filled.departure
+                        , arrival_airport = filled.arrival
+                    }
+            )
         , selectField "Fonction" log.function_on_board planeFunctions (\v -> onChange { log | function_on_board = v })
         , field "Nature du vol" log.flight_nature (\v -> onChange { log | flight_nature = v })
         , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
@@ -94,15 +109,31 @@ planeForm log dates onChange =
         ]
 
 
-gliderForm : GliderDgac.Log -> DateInput msg -> (GliderDgac.Log -> msg) -> Html msg
-gliderForm log dates onChange =
+gliderForm : List Aircraft -> GliderDgac.Log -> DateInput msg -> (GliderDgac.Log -> msg) -> Html msg
+gliderForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-        , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+        , registrationField planes
+            { registration = log.aircraft_registration
+            , aircraftType = log.aircraft_type
+            , departure = log.departure_airport
+            , arrival = log.arrival_airport
+            }
+            (\filled ->
+                onChange
+                    { log
+                        | aircraft_registration = filled.registration
+                        , aircraft_type = filled.aircraftType
+                        , departure_airport = filled.departure
+                        , arrival_airport = filled.arrival
+                    }
+            )
         , selectField "Fonction" log.function_on_board gliderFunctions (\v -> onChange { log | function_on_board = v })
         , selectField "Nature" log.flight_nature gliderNature (\v -> onChange { log | flight_nature = v })
         , selectField "Lancement" log.lmode launchModes (\v -> onChange { log | lmode = v })
+        , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
+        , field "Arrivée" log.arrival_airport (\v -> onChange { log | arrival_airport = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
         , timeField "CDB (HH:MM)" log.pilot_in_command_minutes (\v -> onChange { log | pilot_in_command_minutes = v })
         , timeField "Instructeur (HH:MM)" log.instructor_minutes (\v -> onChange { log | instructor_minutes = v })
@@ -110,12 +141,28 @@ gliderForm log dates onChange =
         ]
 
 
-ulmForm : UlmFfplum.Log -> DateInput msg -> (UlmFfplum.Log -> msg) -> Html msg
-ulmForm log dates onChange =
+ulmForm : List Aircraft -> UlmFfplum.Log -> DateInput msg -> (UlmFfplum.Log -> msg) -> Html msg
+ulmForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-        , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+        , registrationField planes
+            { registration = log.aircraft_registration
+            , aircraftType = log.aircraft_type
+            , departure = log.departure_airport
+            , arrival = log.arrival_airport
+            }
+            (\filled ->
+                onChange
+                    { log
+                        | aircraft_registration = filled.registration
+                        , aircraft_type = filled.aircraftType
+                        , departure_airport = filled.departure
+                        , arrival_airport = filled.arrival
+                    }
+            )
+        , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
+        , field "Arrivée" log.arrival_airport (\v -> onChange { log | arrival_airport = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
         , timeField "CDB (HH:MM)" log.pilot_in_command_minutes (\v -> onChange { log | pilot_in_command_minutes = v })
         , intField "Décollages" log.takeoff_count (\v -> onChange { log | takeoff_count = v })
@@ -124,12 +171,28 @@ ulmForm log dates onChange =
         ]
 
 
-balloonForm : BalloonDgac.Log -> DateInput msg -> (BalloonDgac.Log -> msg) -> Html msg
-balloonForm log dates onChange =
+balloonForm : List Aircraft -> BalloonDgac.Log -> DateInput msg -> (BalloonDgac.Log -> msg) -> Html msg
+balloonForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
         , field "Type" log.ballon_type (\v -> onChange { log | ballon_type = v })
-        , field "Immatriculation" log.ballon_imma (\v -> onChange { log | ballon_imma = v })
+        , registrationField planes
+            { registration = log.ballon_imma
+            , aircraftType = log.ballon_type
+            , departure = log.departure_airport
+            , arrival = log.arrival_airport
+            }
+            (\filled ->
+                onChange
+                    { log
+                        | ballon_imma = filled.registration
+                        , ballon_type = filled.aircraftType
+                        , departure_airport = filled.departure
+                        , arrival_airport = filled.arrival
+                    }
+            )
+        , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
+        , field "Arrivée" log.arrival_airport (\v -> onChange { log | arrival_airport = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
         , timeField "CDB (HH:MM)" log.pilot_in_command_minutes (\v -> onChange { log | pilot_in_command_minutes = v })
         , intField "Décollages" log.takeoff_count (\v -> onChange { log | takeoff_count = v })
@@ -138,8 +201,8 @@ balloonForm log dates onChange =
         ]
 
 
-fclForm : PlaneFcl1080.Log -> DateInput msg -> (PlaneFcl1080.Log -> msg) -> Html msg
-fclForm log dates onChange =
+fclForm : List Aircraft -> PlaneFcl1080.Log -> DateInput msg -> (PlaneFcl1080.Log -> msg) -> Html msg
+fclForm planes log dates onChange =
     let
         flightMinutes =
             if log.total_time_flight /= 0 then
@@ -160,7 +223,21 @@ fclForm log dates onChange =
             ]
         , div [ class "grid-2" ]
             [ field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-            , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+            , registrationField planes
+                { registration = log.aircraft_registration
+                , aircraftType = log.aircraft_type
+                , departure = log.departure_place
+                , arrival = log.arrival_place
+                }
+                (\filled ->
+                    onChange
+                        { log
+                            | aircraft_registration = filled.registration
+                            , aircraft_type = filled.aircraftType
+                            , departure_place = filled.departure
+                            , arrival_place = filled.arrival
+                        }
+                )
             ]
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
         , radioField "SE / ME" (singlePilotChoice log) (\choice -> onChange (setSinglePilot log choice))
@@ -277,6 +354,53 @@ field fieldLabel val onInputMsg =
         [ Html.label [] [ text fieldLabel ]
         , input [ value val, onInput onInputMsg ] []
         ]
+
+
+registrationField : List Aircraft -> LogHelpers.AircraftFields -> (LogHelpers.AircraftFields -> msg) -> Html msg
+registrationField planes current onFilled =
+    let
+        available =
+            List.filter (\plane -> String.trim plane.registration /= "") planes
+
+        control =
+            case available of
+                [] ->
+                    field "Immatriculation" current.registration
+
+                _ ->
+                    selectField "Immatriculation" current.registration (registrationOptions available current.registration)
+    in
+    control (\registration -> onFilled (picked planes registration current))
+
+
+picked : List Aircraft -> String -> LogHelpers.AircraftFields -> LogHelpers.AircraftFields
+picked planes registration current =
+    if registration == current.registration then
+        current
+
+    else
+        LogHelpers.applyRegistration planes registration current
+
+
+registrationOptions : List Aircraft -> String -> List ( String, String )
+registrationOptions planes current =
+    let
+        known =
+            planes
+                |> List.sortBy (\plane -> String.toUpper plane.registration)
+                |> List.map (\plane -> ( plane.registration, plane.registration ))
+
+        knownValues =
+            List.map (\( registration, _ ) -> registration) known
+    in
+    ( "", "—" )
+        :: (if String.trim current /= "" && not (List.member current knownValues) then
+                [ ( current, current ) ]
+
+            else
+                []
+           )
+        ++ known
 
 
 textArea : String -> String -> (String -> msg) -> Html msg

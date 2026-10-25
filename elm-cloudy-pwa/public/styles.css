@@ -216,6 +216,11 @@ h1 {
   font-size: 0.85rem;
 }
 
+.list-item.active {
+  border-color: #d9d4ff;
+  background: var(--accent-soft);
+}
+
 .badge {
   display: inline-block;
   font-size: 0.75rem;

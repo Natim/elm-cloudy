@@ -114,7 +114,6 @@ type Msg
     | MenuLogbookChanged String
     | OpenDashboard
     | OpenFlights
-    | OpenLogbooks
     | OpenAircraft
     | RefreshAircraft Int
     | GotAircraft Int (Result Http.Error (List Aircraft))

@@ -111,6 +111,7 @@ update msg model =
                         , pendingAircraft = pendingAircraft
                         , navOpen = False
                         , selectedLogbookId = selectedLogbookId
+                        , error = Nothing
                     }
             in
             ( next, enterRoute next route )
@@ -294,10 +295,10 @@ update msg model =
                         ( { model | busy = False, error = Just "Impossible de charger les carnets." }, Cmd.none )
 
         SelectLogbook id ->
-            ( { model | selectedLogbookId = Just id, navOpen = False }, Nav.pushUrl model.key (Route.toPath (Logs id)) )
+            update (MenuLogbookChanged (String.fromInt id)) model
 
         BackToLogbooks ->
-            ( model, Nav.pushUrl model.key (Route.toPath Logbooks) )
+            ( model, Nav.pushUrl model.key (Route.toPath Dashboard) )
 
         RefreshLogs logbookId ->
             case ( model.session, findLogbook model logbookId ) of
@@ -352,7 +353,17 @@ update msg model =
                         update Logout { model | busy = False }
 
                     else
-                        ( { model | busy = False, error = Just (httpErrorMessage "vols" err) }, Cmd.none )
+                        ( { model
+                            | busy = False
+                            , error =
+                                if showsFlights model.route logbookId then
+                                    Just (httpErrorMessage "vols" err)
+
+                                else
+                                    model.error
+                          }
+                        , Cmd.none
+                        )
 
         GotReports logbookId result ->
             case result of
@@ -580,7 +591,7 @@ update msg model =
             in
             ( model
             , if logbookId == 0 then
-                Nav.pushUrl model.key (Route.toPath Logbooks)
+                Nav.pushUrl model.key (Route.toPath Dashboard)
 
               else
                 Nav.pushUrl model.key (Route.toPath (Logs logbookId))
@@ -719,9 +730,6 @@ update msg model =
 
         OpenFlights ->
             openLogbookRoute model Logs
-
-        OpenLogbooks ->
-            ( { model | navOpen = False }, Nav.pushUrl model.key (Route.toPath Logbooks) )
 
         OpenAircraft ->
             openLogbookRoute model Aircraft
@@ -981,23 +989,29 @@ enterRoute model route =
             cmdMsg (RefreshAircraft id)
 
         EditorEdit id clientId ->
-            case model.editor of
-                Just editor ->
-                    if editor.logbookId == id && editor.localLog.clientId == clientId then
-                        Cmd.none
+            Cmd.batch
+                [ case model.editor of
+                    Just editor ->
+                        if editor.logbookId == id && editor.localLog.clientId == clientId then
+                            Cmd.none
 
-                    else
+                        else
+                            cmdMsg (EditLog id clientId)
+
+                    Nothing ->
                         cmdMsg (EditLog id clientId)
-
-                Nothing ->
-                    cmdMsg (EditLog id clientId)
+                , cmdMsg (RefreshAircraft id)
+                ]
 
         EditorNew id ->
-            if model.editor == Nothing then
-                cmdMsg (StartNewLog id)
+            Cmd.batch
+                [ if model.editor == Nothing then
+                    cmdMsg (StartNewLog id)
 
-            else
-                Cmd.none
+                  else
+                    Cmd.none
+                , cmdMsg (RefreshAircraft id)
+                ]
 
         AircraftNew id ->
             case model.aircraftEditor of
@@ -1031,7 +1045,7 @@ enterRoute model route =
                 Cmd.none
 
         Logbooks ->
-            Cmd.none
+            Nav.pushUrl model.key (Route.toPath Dashboard)
 
 
 chosenLogbook : Model -> Route -> Maybe Int
@@ -1061,7 +1075,26 @@ openLogbookRoute model toRoute =
             )
 
         Nothing ->
-            ( { model | navOpen = False }, Nav.pushUrl model.key (Route.toPath Logbooks) )
+            ( { model | navOpen = False }, Nav.pushUrl model.key (Route.toPath Dashboard) )
+
+
+showsFlights : Route -> Int -> Bool
+showsFlights route logbookId =
+    case route of
+        Logs id ->
+            id == logbookId
+
+        Dashboard ->
+            True
+
+        EditorNew id ->
+            id == logbookId
+
+        EditorEdit id _ ->
+            id == logbookId
+
+        _ ->
+            False
 
 
 aircraftRoute : Route -> Bool

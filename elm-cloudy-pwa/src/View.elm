@@ -45,7 +45,7 @@ page model =
             dashboardView model
 
         Logbooks ->
-            logbooksView model
+            dashboardView model
 
         Logs id ->
             logsView model id
@@ -80,7 +80,6 @@ shellConfig model session =
     , onSelectLogbook = MenuLogbookChanged
     , onDashboard = OpenDashboard
     , onFlights = OpenFlights
-    , onLogbooks = OpenLogbooks
     , onAircraft = OpenAircraft
     , onLogout = Logout
     }
@@ -96,7 +95,7 @@ sectionOf route =
             SecDashboard
 
         Logbooks ->
-            SecLogbooks
+            SecDashboard
 
         Logs _ ->
             SecFlights
@@ -155,23 +154,18 @@ loginView model =
         ]
 
 
-logbooksView : Model -> Html Msg
-logbooksView model =
-    div []
+logbookList : Model -> Html Msg
+logbookList model =
+    div [ class "card" ]
         [ div [ class "page-head" ]
-            [ div []
-                [ h2 [ class "page-title" ] [ text "Carnets" ]
-                , p [ class "subtitle" ] [ text "Choisissez un carnet pour consulter les vols." ]
-                ]
-            , div [ class "page-actions" ]
-                [ button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ] ]
+            [ p [ class "section-title" ] [ text "Carnets" ]
+            , button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
             ]
         , if not model.storageReady || (model.busy && List.isEmpty model.logbooks) then
             p [] [ text "Chargement…" ]
 
           else if List.isEmpty model.logbooks then
-            div [ class "card" ]
-                [ p [] [ text "Aucun carnet en cache. Actualisez une fois en ligne." ] ]
+            p [ class "empty" ] [ text "Aucun carnet en cache. Actualisez une fois en ligne." ]
 
           else
             div [ class "list" ]
@@ -186,8 +180,21 @@ logbookItem model book =
             Dict.get (String.fromInt book.id) model.logs
                 |> Maybe.map LocalLog.pendingCount
                 |> Maybe.withDefault 0
+
+        selected =
+            model.selectedLogbookId == Just book.id
     in
-    button [ type_ "button", class "list-item", onClick (SelectLogbook book.id) ]
+    button
+        [ type_ "button"
+        , class
+            (if selected then
+                "list-item active"
+
+             else
+                "list-item"
+            )
+        , onClick (SelectLogbook book.id)
+        ]
         [ Html.strong [] [ text book.name ]
         , Html.span []
             [ text (Shell.categoryLabel book.category)
@@ -245,30 +252,36 @@ logsView model logbookId =
 
 dashboardView : Model -> Html Msg
 dashboardView model =
-    case activeBook model of
-        Nothing ->
-            div [ class "card" ]
-                [ h2 [ class "page-title" ] [ text "Tableau de bord" ]
-                , p [] [ text "Aucun carnet pour le moment." ]
-                , button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
-                ]
+    let
+        email =
+            model.session |> Maybe.map .email |> Maybe.withDefault ""
 
-        Just book ->
-            let
-                logs =
-                    Dict.get (String.fromInt book.id) model.logs |> Maybe.withDefault []
+        stats =
+            case activeBook model of
+                Nothing ->
+                    div [ class "page-head" ]
+                        [ h2 [ class "page-title" ] [ text ("Bonjour " ++ Shell.displayName email) ]
+                        , p [ class "subtitle" ] [ text "Sélectionnez un carnet pour voir l'activité." ]
+                        ]
 
-                email =
-                    model.session |> Maybe.map .email |> Maybe.withDefault ""
-            in
-            StatsView.view
-                { title = "Bonjour " ++ Shell.displayName email
-                , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
-                , summary = Stats.summarize logs (Dict.get (String.fromInt book.id) model.reports)
-                , truncated = List.length logs >= 100
-                , onNewFlight = StartNewLog book.id
-                , onAircraft = OpenAircraft
-                }
+                Just book ->
+                    let
+                        logs =
+                            Dict.get (String.fromInt book.id) model.logs |> Maybe.withDefault []
+                    in
+                    StatsView.view
+                        { title = "Bonjour " ++ Shell.displayName email
+                        , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
+                        , summary = Stats.summarize logs (Dict.get (String.fromInt book.id) model.reports)
+                        , truncated = List.length logs >= 100
+                        , onNewFlight = StartNewLog book.id
+                        , onAircraft = OpenAircraft
+                        }
+    in
+    div []
+        [ stats
+        , logbookList model
+        ]
 
 
 aircraftList : Model -> Int -> Html Msg
@@ -305,7 +318,8 @@ editorRoute model logbookId =
     case model.editor of
         Just editor ->
             if editor.logbookId == logbookId then
-                Editor.view editor.localLog.entry
+                Editor.view (aircraftOf model logbookId)
+                    editor.localLog.entry
                     { draft = editor.dateDraft
                     , onText = DateTextChanged
                     , onPicked = DatePicked
