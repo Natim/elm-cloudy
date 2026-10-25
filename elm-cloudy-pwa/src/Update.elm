@@ -81,7 +81,15 @@ update msg model =
                                 model.route
                       }
                     , if loaded.session /= Nothing then
-                        Cmd.batch [ cmdMsg RefreshLogbooks, cmdMsg FlushOutbox ]
+                        Cmd.batch
+                            [ cmdMsg RefreshLogbooks
+                            , cmdMsg FlushOutbox
+                            , if model.route == Login then
+                                Nav.pushUrl model.key (Route.toPath Logbooks)
+
+                              else
+                                Cmd.none
+                            ]
 
                       else
                         Cmd.none
@@ -150,7 +158,7 @@ update msg model =
                     ( { model | session = Just session, busy = False, error = Nothing, route = Logbooks }
                     , Cmd.batch
                         [ Ports.storageSaveSession (Session.encode session)
-                        , Nav.pushUrl model.key "/logbooks"
+                        , Nav.pushUrl model.key (Route.toPath Logbooks)
                         , cmdMsg RefreshLogbooks
                         , cmdMsg FlushOutbox
                         ]
@@ -181,10 +189,10 @@ update msg model =
                     ( { model | busy = False, error = Just "Impossible de charger les carnets." }, Cmd.none )
 
         SelectLogbook id ->
-            ( model, Nav.pushUrl model.key ("/logbooks/" ++ String.fromInt id) )
+            ( model, Nav.pushUrl model.key (Route.toPath (Logs id)) )
 
         BackToLogbooks ->
-            ( model, Nav.pushUrl model.key "/logbooks" )
+            ( model, Nav.pushUrl model.key (Route.toPath Logbooks) )
 
         RefreshLogs logbookId ->
             case ( model.session, findLogbook model logbookId ) of
@@ -254,7 +262,7 @@ update msg model =
                             }
                     in
                     ( { model | editor = Just { logbookId = logbookId, category = category, localLog = localLog }, pendingNew = Nothing }
-                    , Nav.pushUrl model.key ("/logbooks/" ++ String.fromInt logbookId ++ "/new")
+                    , Nav.pushUrl model.key (Route.toPath (EditorNew logbookId))
                     )
 
         EditLog logbookId clientId ->
@@ -269,7 +277,7 @@ update msg model =
 
                         Just localLog ->
                             ( { model | editor = Just { logbookId = logbookId, category = localLog.category, localLog = localLog } }
-                            , Nav.pushUrl model.key ("/logbooks/" ++ String.fromInt logbookId ++ "/edit/" ++ clientId)
+                            , Nav.pushUrl model.key (Route.toPath (EditorEdit logbookId clientId))
                             )
 
         EditorChanged entry ->
@@ -307,7 +315,7 @@ update msg model =
                     , Cmd.batch
                         [ persistLogs logs
                         , Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
-                        , Nav.pushUrl model.key ("/logbooks/" ++ String.fromInt editor.logbookId)
+                        , Nav.pushUrl model.key (Route.toPath (Logs editor.logbookId))
                         , cmdMsg FlushOutbox
                         ]
                     )
@@ -388,7 +396,7 @@ update msg model =
                 , Ports.storageSaveLogbooks (Persisted.encodeLogbooks [])
                 , Ports.storageSaveLogs (StorageCodec.encodeLogs Dict.empty)
                 , Ports.storageSaveOutbox (StorageCodec.encodeOutbox [])
-                , Nav.pushUrl model.key "/login"
+                , Nav.pushUrl model.key (Route.toPath Login)
                 ]
             )
 

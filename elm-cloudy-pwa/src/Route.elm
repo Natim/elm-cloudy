@@ -37,12 +37,17 @@ fromUrl url =
             Login
 
 
+basePath : String
+basePath =
+    "/elm-cloudy"
+
+
 normalizePath : String -> String
 normalizePath path =
-    if String.startsWith "/elm-cloudy/" path then
-        String.dropLeft (String.length "/elm-cloudy") path
+    if String.startsWith (basePath ++ "/") path then
+        String.dropLeft (String.length basePath) path
 
-    else if path == "/elm-cloudy" || path == "/elm-cloudy/" then
+    else if path == basePath || path == basePath ++ "/" then
         "/"
 
     else
@@ -51,18 +56,20 @@ normalizePath path =
 
 toPath : Route -> String
 toPath route =
-    case route of
-        Login ->
-            "/login"
+    basePath
+        ++ (case route of
+                Login ->
+                    "/login"
 
-        Logbooks ->
-            "/logbooks"
+                Logbooks ->
+                    "/logbooks"
 
-        Logs id ->
-            "/logbooks/" ++ String.fromInt id
+                Logs id ->
+                    "/logbooks/" ++ String.fromInt id
 
-        EditorNew id ->
-            "/logbooks/" ++ String.fromInt id ++ "/new"
+                EditorNew id ->
+                    "/logbooks/" ++ String.fromInt id ++ "/new"
 
-        EditorEdit id clientId ->
-            "/logbooks/" ++ String.fromInt id ++ "/edit/" ++ clientId
+                EditorEdit id clientId ->
+                    "/logbooks/" ++ String.fromInt id ++ "/edit/" ++ clientId
+           )
