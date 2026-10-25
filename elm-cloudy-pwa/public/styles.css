@@ -268,6 +268,25 @@ h1 {
   cursor: pointer;
 }
 
+.file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.file-list:empty {
+  display: none;
+}
+
+.file-thumb {
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0f172a;
+}
+
 .radio-row {
   display: flex;
   flex-wrap: wrap;

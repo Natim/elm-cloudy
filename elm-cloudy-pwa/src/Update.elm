@@ -4,17 +4,21 @@ import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
 import Cloudy
 import Cloudy.Client as Client
+import Cloudy.Data.Aircraft as AircraftData
+import Cloudy.Data.Log exposing (LogEntry)
 import Cloudy.Data.LogListPage exposing (LogListPage)
 import Cloudy.Data.Logbook as Logbook
 import Cloudy.Data.LogbookCategory as LogbookCategory
 import Cloudy.Request as Request
 import Dict
+import File
+import File.Select
 import Http
 import Json.Decode
 import Json.Encode as Encode
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
-import Model exposing (EditorState, Model, Msg(..))
+import Model exposing (AircraftEditor, EditorState, Model, Msg(..))
 import Outbox exposing (OutboxOp(..))
 import Persisted
 import Ports
@@ -61,81 +65,101 @@ update msg model =
                         _ ->
                             Nothing
 
-                cmd =
-                    case route of
-                        Logs id ->
-                            cmdMsg (RefreshLogs id)
-
-                        EditorEdit id clientId ->
-                            case editor of
-                                Just _ ->
-                                    Cmd.none
-
-                                Nothing ->
-                                    cmdMsg (EditLog id clientId)
-
-                        EditorNew id ->
-                            if editor == Nothing then
-                                cmdMsg (StartNewLog id)
+                aircraftEditor =
+                    case ( route, model.aircraftEditor ) of
+                        ( AircraftNew id, Just current ) ->
+                            if current.logbookId == id && current.aircraftId == Nothing then
+                                Just current
 
                             else
-                                Cmd.none
+                                Nothing
 
-                        Login ->
-                            if model.session /= Nothing then
-                                Nav.pushUrl model.key (Route.toPath Logbooks)
+                        ( AircraftEdit id aircraftId, Just current ) ->
+                            if current.logbookId == id && current.aircraftId == Just aircraftId then
+                                Just current
 
                             else
-                                Cmd.none
+                                Nothing
 
                         _ ->
-                            Cmd.none
+                            Nothing
+
+                pendingAircraft =
+                    case ( route, model.pendingAircraft ) of
+                        ( AircraftEdit id aircraftId, Just ( pendingId, pendingAircraftId ) ) ->
+                            if id == pendingId && aircraftId == pendingAircraftId then
+                                Just ( pendingId, pendingAircraftId )
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
+                selectedLogbookId =
+                    case Route.logbookId route of
+                        Just id ->
+                            Just id
+
+                        Nothing ->
+                            model.selectedLogbookId
+
+                next =
+                    { model
+                        | route = route
+                        , editor = editor
+                        , aircraftEditor = aircraftEditor
+                        , pendingAircraft = pendingAircraft
+                        , navOpen = False
+                        , selectedLogbookId = selectedLogbookId
+                    }
             in
-            ( { model | route = route, editor = editor }, cmd )
+            ( next, enterRoute next route )
 
         StorageLoaded raw ->
             case Json.Decode.decodeValue Persisted.decoder raw of
                 Ok loaded ->
-                    ( { model
-                        | session = loaded.session
-                        , logbooks = loaded.logbooks
-                        , logs = loaded.logs
-                        , outbox = loaded.outbox
-                        , online = loaded.online
-                        , storageReady = True
-                        , route =
+                    let
+                        route =
                             if loaded.session == Nothing then
                                 Login
 
                             else if model.route == Login then
-                                Logbooks
+                                Dashboard
 
                             else
                                 model.route
-                      }
+
+                        selectedLogbookId =
+                            case Route.logbookId route of
+                                Just id ->
+                                    Just id
+
+                                Nothing ->
+                                    loaded.logbooks |> List.head |> Maybe.map .id
+
+                        next =
+                            { model
+                                | session = loaded.session
+                                , logbooks = loaded.logbooks
+                                , logs = loaded.logs
+                                , outbox = loaded.outbox
+                                , online = loaded.online
+                                , storageReady = True
+                                , route = route
+                                , selectedLogbookId = selectedLogbookId
+                            }
+                    in
+                    ( next
                     , if loaded.session /= Nothing then
                         Cmd.batch
                             [ cmdMsg RefreshLogbooks
                             , cmdMsg FlushOutbox
-                            , case model.route of
-                                Login ->
-                                    Nav.pushUrl model.key (Route.toPath Logbooks)
+                            , if model.route == Login then
+                                Nav.pushUrl model.key (Route.toPath Dashboard)
 
-                                Logs id ->
-                                    cmdMsg (RefreshLogs id)
-
-                                EditorEdit id clientId ->
-                                    cmdMsg (EditLog id clientId)
-
-                                EditorNew id ->
-                                    if model.editor == Nothing then
-                                        cmdMsg (StartNewLog id)
-
-                                    else
-                                        Cmd.none
-
-                                _ ->
-                                    Cmd.none
+                              else
+                                enterRoute next route
                             ]
 
                       else if model.route == Login then
@@ -205,12 +229,13 @@ update msg model =
                             { baseUrl = model.loginForm.baseUrl
                             , accessToken = token.accessToken
                             , userId = token.userId
+                            , email = model.loginForm.email
                             }
                     in
-                    ( { model | session = Just session, busy = False, error = Nothing, route = Logbooks }
+                    ( { model | session = Just session, busy = False, error = Nothing, route = Dashboard }
                     , Cmd.batch
                         [ Ports.storageSaveSession (Session.encode session)
-                        , Nav.pushUrl model.key (Route.toPath Logbooks)
+                        , Nav.pushUrl model.key (Route.toPath Dashboard)
                         , cmdMsg RefreshLogbooks
                         , cmdMsg FlushOutbox
                         ]
@@ -237,8 +262,29 @@ update msg model =
         GotLogbooks result ->
             case result of
                 Ok books ->
-                    ( { model | logbooks = books, busy = False }
-                    , Ports.storageSaveLogbooks (Persisted.encodeLogbooks books)
+                    let
+                        selected =
+                            case model.selectedLogbookId of
+                                Just id ->
+                                    if List.any (\book -> book.id == id) books then
+                                        Just id
+
+                                    else
+                                        List.head books |> Maybe.map .id
+
+                                Nothing ->
+                                    List.head books |> Maybe.map .id
+
+                        refresh =
+                            case ( model.route, selected ) of
+                                ( Dashboard, Just id ) ->
+                                    Cmd.batch [ cmdMsg (RefreshLogs id), cmdMsg (RefreshAircraft id) ]
+
+                                _ ->
+                                    Cmd.none
+                    in
+                    ( { model | logbooks = books, busy = False, selectedLogbookId = selected }
+                    , Cmd.batch [ Ports.storageSaveLogbooks (Persisted.encodeLogbooks books), refresh ]
                     )
 
                 Err err ->
@@ -249,7 +295,7 @@ update msg model =
                         ( { model | busy = False, error = Just "Impossible de charger les carnets." }, Cmd.none )
 
         SelectLogbook id ->
-            ( model, Nav.pushUrl model.key (Route.toPath (Logs id)) )
+            ( { model | selectedLogbookId = Just id, navOpen = False }, Nav.pushUrl model.key (Route.toPath (Logs id)) )
 
         BackToLogbooks ->
             ( model, Nav.pushUrl model.key (Route.toPath Logbooks) )
@@ -350,7 +396,7 @@ update msg model =
                             , entry = entry
                             }
                     in
-                    ( { model | editor = Just { logbookId = logbookId, category = category, localLog = localLog, dateDraft = Nothing }, pendingNew = Nothing }
+                    ( { model | editor = Just { logbookId = logbookId, category = category, localLog = localLog, dateDraft = Nothing, uploadingFile = False, pendingFile = Nothing }, pendingNew = Nothing }
                     , if model.route == EditorNew logbookId then
                         Cmd.none
 
@@ -368,7 +414,7 @@ update msg model =
                         ( model, Cmd.none )
 
                 open localLog =
-                    ( { model | editor = Just { logbookId = logbookId, category = localLog.category, localLog = localLog, dateDraft = Nothing } }
+                    ( { model | editor = Just { logbookId = logbookId, category = localLog.category, localLog = localLog, dateDraft = Nothing, uploadingFile = False, pendingFile = Nothing } }
                     , if model.route == EditorEdit logbookId clientId then
                         Cmd.none
 
@@ -432,6 +478,62 @@ update msg model =
 
                 Just editor ->
                     ( { model | editor = Just { editor | dateDraft = Nothing } }, Cmd.none )
+
+        PickLogFile ->
+            ( model, File.Select.file [ "image/*" ] GotLogFile )
+
+        GotLogFile file ->
+            case ( model.session, model.editor ) of
+                ( Just session, Just editor ) ->
+                    case editor.localLog.serverId of
+                        Just serverId ->
+                            ( { model | editor = Just { editor | uploadingFile = True, pendingFile = Nothing }, error = Nothing }
+                            , Cloudy.uploadLogFile (Session.toClient session) editor.logbookId serverId file
+                                |> Request.send GotLogFileUpload
+                            )
+
+                        Nothing ->
+                            saveNewLogThenUpload file editor model
+
+                _ ->
+                    ( { model | route = Login }
+                    , Nav.pushUrl model.key (Route.toPath Login)
+                    )
+
+        GotLogFileUpload result ->
+            case model.editor of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just editor ->
+                    case result of
+                        Ok attached ->
+                            let
+                                localLog =
+                                    editor.localLog
+
+                                next =
+                                    { localLog | entry = LogHelpers.addFile attached localLog.entry }
+
+                                key =
+                                    String.fromInt editor.logbookId
+
+                                existing =
+                                    Dict.get key model.logs |> Maybe.withDefault []
+
+                                logs =
+                                    Dict.insert key (upsertLocal existing next) model.logs
+                            in
+                            ( { model | editor = Just { editor | localLog = next, uploadingFile = False }, logs = logs, error = Nothing }
+                            , persistLogs logs
+                            )
+
+                        Err err ->
+                            if unauthorized err then
+                                update Logout { model | busy = False }
+
+                            else
+                                ( { model | editor = Just { editor | uploadingFile = False }, error = Just "Impossible d'envoyer la photo." }, Cmd.none )
 
         SaveEditor ->
             case model.editor of
@@ -508,17 +610,23 @@ update msg model =
 
                         outbox =
                             Outbox.dropHead model.outbox
+
+                        ( editor, uploadCmd ) =
+                            uploadPendingFile clientId serverId entry model
                     in
-                    ( { model | logs = logs, outbox = outbox, busy = False }
+                    ( { model | logs = logs, outbox = outbox, busy = False, editor = editor }
                     , Cmd.batch
                         [ persistLogs logs
                         , Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
+                        , uploadCmd
                         , cmdMsg FlushOutbox
                         ]
                     )
 
                 Err _ ->
-                    ( { model | busy = False, error = Just "Synchronisation interrompue." }, Cmd.none )
+                    ( { model | busy = False, error = Just "Synchronisation interrompue.", editor = clearPendingFile model.editor }
+                    , Cmd.none
+                    )
 
         GotOutboxReplace result ->
             case result of
@@ -554,8 +662,301 @@ update msg model =
                 Err _ ->
                     ( { model | busy = False }, Cmd.none )
 
+        ToggleNav ->
+            ( { model | navOpen = not model.navOpen }, Cmd.none )
+
+        CloseNav ->
+            ( { model | navOpen = False }, Cmd.none )
+
+        MenuLogbookChanged raw ->
+            case String.toInt raw of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just id ->
+                    let
+                        route =
+                            case model.route of
+                                Logs _ ->
+                                    Logs id
+
+                                EditorNew _ ->
+                                    Logs id
+
+                                EditorEdit _ _ ->
+                                    Logs id
+
+                                Aircraft _ ->
+                                    Aircraft id
+
+                                AircraftNew _ ->
+                                    Aircraft id
+
+                                AircraftEdit _ _ ->
+                                    Aircraft id
+
+                                _ ->
+                                    model.route
+
+                        next =
+                            { model | selectedLogbookId = Just id, navOpen = False }
+                    in
+                    if route == model.route then
+                        ( next, Cmd.batch [ cmdMsg (RefreshLogs id), cmdMsg (RefreshAircraft id) ] )
+
+                    else
+                        ( next, Nav.pushUrl model.key (Route.toPath route) )
+
+        OpenDashboard ->
+            ( { model | navOpen = False }
+            , if model.route == Dashboard then
+                case chosenLogbook model Dashboard of
+                    Just id ->
+                        Cmd.batch [ cmdMsg (RefreshLogs id), cmdMsg (RefreshAircraft id) ]
+
+                    Nothing ->
+                        Cmd.none
+
+              else
+                Nav.pushUrl model.key (Route.toPath Dashboard)
+            )
+
+        OpenFlights ->
+            openLogbookRoute model Logs
+
+        OpenLogbooks ->
+            ( { model | navOpen = False }, Nav.pushUrl model.key (Route.toPath Logbooks) )
+
+        OpenAircraft ->
+            openLogbookRoute model Aircraft
+
+        RefreshAircraft logbookId ->
+            case model.session of
+                Just session ->
+                    ( model
+                    , Cloudy.listAircraft (Session.toClient session) logbookId
+                        |> Request.send (GotAircraft logbookId)
+                    )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        GotAircraft logbookId result ->
+            case result of
+                Ok list ->
+                    let
+                        aircraft =
+                            Dict.insert (String.fromInt logbookId) list model.aircraft
+
+                        opened =
+                            case model.pendingAircraft of
+                                Just ( pendingId, aircraftId ) ->
+                                    if pendingId == logbookId then
+                                        case List.filter (\item -> item.id == aircraftId) list |> List.head of
+                                            Just found ->
+                                                { editor = Just (editorFrom logbookId found), pending = Nothing, error = Nothing, cmd = Cmd.none }
+
+                                            Nothing ->
+                                                { editor = Nothing, pending = Nothing, error = Just "Aéronef introuvable.", cmd = Nav.pushUrl model.key (Route.toPath (Aircraft logbookId)) }
+
+                                    else
+                                        { editor = model.aircraftEditor, pending = model.pendingAircraft, error = model.error, cmd = Cmd.none }
+
+                                Nothing ->
+                                    { editor = model.aircraftEditor, pending = Nothing, error = model.error, cmd = Cmd.none }
+                    in
+                    ( { model | aircraft = aircraft, aircraftEditor = opened.editor, pendingAircraft = opened.pending, error = opened.error }, opened.cmd )
+
+                Err err ->
+                    if unauthorized err then
+                        update Logout { model | busy = False }
+
+                    else
+                        ( { model
+                            | pendingAircraft = Nothing
+                            , error =
+                                if aircraftRoute model.route || model.pendingAircraft /= Nothing then
+                                    Just (httpErrorMessage "aéronefs" err)
+
+                                else
+                                    model.error
+                          }
+                        , Cmd.none
+                        )
+
+        StartNewAircraft logbookId ->
+            ( { model
+                | aircraftEditor =
+                    Just
+                        { logbookId = logbookId
+                        , aircraftId = Nothing
+                        , registration = ""
+                        , aircraftType = ""
+                        , airport = ""
+                        , confirmingDelete = False
+                        }
+                , pendingAircraft = Nothing
+                , selectedLogbookId = Just logbookId
+                , navOpen = False
+                , error = Nothing
+              }
+            , if model.route == AircraftNew logbookId then
+                Cmd.none
+
+              else
+                Nav.pushUrl model.key (Route.toPath (AircraftNew logbookId))
+            )
+
+        OpenAircraftEditor logbookId aircraftId ->
+            let
+                navigate =
+                    if model.route == AircraftEdit logbookId aircraftId then
+                        Cmd.none
+
+                    else
+                        Nav.pushUrl model.key (Route.toPath (AircraftEdit logbookId aircraftId))
+            in
+            case findAircraft model logbookId aircraftId of
+                Just found ->
+                    ( { model | aircraftEditor = Just (editorFrom logbookId found), pendingAircraft = Nothing, selectedLogbookId = Just logbookId, navOpen = False, error = Nothing }
+                    , Cmd.batch [ navigate, cmdMsg (RefreshAircraft logbookId) ]
+                    )
+
+                Nothing ->
+                    ( { model | pendingAircraft = Just ( logbookId, aircraftId ), selectedLogbookId = Just logbookId, navOpen = False }
+                    , Cmd.batch [ navigate, cmdMsg (RefreshAircraft logbookId) ]
+                    )
+
+        AircraftRegistrationChanged value ->
+            updateAircraft (\editor -> { editor | registration = value }) model
+
+        AircraftTypeChanged value ->
+            updateAircraft (\editor -> { editor | aircraftType = value }) model
+
+        AircraftAirportChanged value ->
+            updateAircraft (\editor -> { editor | airport = value }) model
+
+        SaveAircraft ->
+            case ( model.session, model.aircraftEditor ) of
+                ( Just session, Just editor ) ->
+                    if String.trim editor.registration == "" then
+                        ( { model | error = Just "L'immatriculation est obligatoire." }, Cmd.none )
+
+                    else if not model.online then
+                        ( { model | error = Just "Connexion requise pour enregistrer un aéronef." }, Cmd.none )
+
+                    else
+                        let
+                            payload =
+                                { registration = String.trim editor.registration
+                                , aircraftType = optionalText editor.aircraftType
+                                , airport = optionalText editor.airport
+                                }
+
+                            client =
+                                Session.toClient session
+
+                            request =
+                                case editor.aircraftId of
+                                    Nothing ->
+                                        Cloudy.createAircraft client editor.logbookId payload
+
+                                    Just aircraftId ->
+                                        Cloudy.replaceAircraft client editor.logbookId aircraftId payload
+                        in
+                        ( { model | busy = True, error = Nothing }
+                        , request |> Request.send (GotSavedAircraft editor.logbookId)
+                        )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotSavedAircraft logbookId result ->
+            case result of
+                Ok aircraft ->
+                    let
+                        key =
+                            String.fromInt logbookId
+
+                        list =
+                            Dict.get key model.aircraft |> Maybe.withDefault []
+                    in
+                    ( { model | aircraft = Dict.insert key (upsertAircraft list aircraft) model.aircraft, busy = False, aircraftEditor = Nothing, error = Nothing }
+                    , Nav.pushUrl model.key (Route.toPath (Aircraft logbookId))
+                    )
+
+                Err err ->
+                    if unauthorized err then
+                        update Logout { model | busy = False }
+
+                    else
+                        ( { model | busy = False, error = Just (httpErrorMessage "aéronefs" err) }, Cmd.none )
+
+        AskDeleteAircraft ->
+            case model.aircraftEditor of
+                Just editor ->
+                    ( { model | aircraftEditor = Just { editor | confirmingDelete = True } }, Cmd.none )
+
+                Nothing ->
+                    ( model, Cmd.none )
+
+        DeleteAircraft ->
+            case ( model.session, model.aircraftEditor, model.online ) of
+                ( Just session, Just editor, True ) ->
+                    case editor.aircraftId of
+                        Just aircraftId ->
+                            ( { model | busy = True, error = Nothing }
+                            , Cloudy.deleteAircraft (Session.toClient session) editor.logbookId aircraftId
+                                |> Request.sendEmpty (GotDeletedAircraft editor.logbookId aircraftId)
+                            )
+
+                        Nothing ->
+                            ( model, Cmd.none )
+
+                ( Just _, Just _, False ) ->
+                    ( { model | error = Just "Connexion requise pour supprimer un aéronef." }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotDeletedAircraft logbookId aircraftId result ->
+            case result of
+                Ok () ->
+                    let
+                        key =
+                            String.fromInt logbookId
+
+                        list =
+                            Dict.get key model.aircraft
+                                |> Maybe.withDefault []
+                                |> List.filter (\item -> item.id /= aircraftId)
+                    in
+                    ( { model | aircraft = Dict.insert key list model.aircraft, busy = False, aircraftEditor = Nothing, error = Nothing }
+                    , Nav.pushUrl model.key (Route.toPath (Aircraft logbookId))
+                    )
+
+                Err err ->
+                    if unauthorized err then
+                        update Logout { model | busy = False }
+
+                    else
+                        ( { model | busy = False, error = Just (httpErrorMessage "aéronefs" err) }, Cmd.none )
+
         Logout ->
-            ( { model | session = Nothing, route = Login, logbooks = [], logs = Dict.empty, reports = Dict.empty, outbox = [] }
+            ( { model
+                | session = Nothing
+                , route = Login
+                , logbooks = []
+                , logs = Dict.empty
+                , reports = Dict.empty
+                , outbox = []
+                , editor = Nothing
+                , navOpen = False
+                , selectedLogbookId = Nothing
+                , aircraft = Dict.empty
+                , aircraftEditor = Nothing
+                , pendingAircraft = Nothing
+              }
             , Cmd.batch
                 [ Ports.storageSaveSession Encode.null
                 , Ports.storageSaveLogbooks (Persisted.encodeLogbooks [])
@@ -564,6 +965,228 @@ update msg model =
                 , Nav.pushUrl model.key (Route.toPath Login)
                 ]
             )
+
+
+enterRoute : Model -> Route -> Cmd Msg
+enterRoute model route =
+    case route of
+        Logs id ->
+            Cmd.batch [ cmdMsg (RefreshLogs id), cmdMsg (RefreshAircraft id) ]
+
+        Dashboard ->
+            case chosenLogbook model Dashboard of
+                Just id ->
+                    Cmd.batch [ cmdMsg (RefreshLogs id), cmdMsg (RefreshAircraft id) ]
+
+                Nothing ->
+                    Cmd.none
+
+        Aircraft id ->
+            cmdMsg (RefreshAircraft id)
+
+        EditorEdit id clientId ->
+            case model.editor of
+                Just editor ->
+                    if editor.logbookId == id && editor.localLog.clientId == clientId then
+                        Cmd.none
+
+                    else
+                        cmdMsg (EditLog id clientId)
+
+                Nothing ->
+                    cmdMsg (EditLog id clientId)
+
+        EditorNew id ->
+            if model.editor == Nothing then
+                cmdMsg (StartNewLog id)
+
+            else
+                Cmd.none
+
+        _ ->
+            Cmd.none
+
+
+chosenLogbook : Model -> Route -> Maybe Int
+chosenLogbook model route =
+    case Route.logbookId route of
+        Just id ->
+            Just id
+
+        Nothing ->
+            model.selectedLogbookId
+
+
+openLogbookRoute : Model -> (Int -> Route) -> ( Model, Cmd Msg )
+openLogbookRoute model toRoute =
+    case chosenLogbook model model.route of
+        Just id ->
+            let
+                route =
+                    toRoute id
+            in
+            ( { model | navOpen = False, selectedLogbookId = Just id }
+            , if model.route == route then
+                enterRoute model route
+
+              else
+                Nav.pushUrl model.key (Route.toPath route)
+            )
+
+        Nothing ->
+            ( { model | navOpen = False }, Nav.pushUrl model.key (Route.toPath Logbooks) )
+
+
+aircraftRoute : Route -> Bool
+aircraftRoute route =
+    case route of
+        Aircraft _ ->
+            True
+
+        AircraftNew _ ->
+            True
+
+        AircraftEdit _ _ ->
+            True
+
+        _ ->
+            False
+
+
+findAircraft : Model -> Int -> Int -> Maybe AircraftData.Aircraft
+findAircraft model logbookId aircraftId =
+    Dict.get (String.fromInt logbookId) model.aircraft
+        |> Maybe.withDefault []
+        |> List.filter (\plane -> plane.id == aircraftId)
+        |> List.head
+
+
+editorFrom : Int -> AircraftData.Aircraft -> AircraftEditor
+editorFrom logbookId plane =
+    { logbookId = logbookId
+    , aircraftId = Just plane.id
+    , registration = plane.registration
+    , aircraftType = Maybe.withDefault "" plane.aircraftType
+    , airport = Maybe.withDefault "" plane.airport
+    , confirmingDelete = False
+    }
+
+
+updateAircraft : (AircraftEditor -> AircraftEditor) -> Model -> ( Model, Cmd Msg )
+updateAircraft change model =
+    ( { model | aircraftEditor = Maybe.map change model.aircraftEditor }, Cmd.none )
+
+
+optionalText : String -> Maybe String
+optionalText raw =
+    let
+        trimmed =
+            String.trim raw
+    in
+    if String.isEmpty trimmed then
+        Nothing
+
+    else
+        Just trimmed
+
+
+upsertAircraft : List AircraftData.Aircraft -> AircraftData.Aircraft -> List AircraftData.Aircraft
+upsertAircraft list aircraft =
+    aircraft :: List.filter (\item -> item.id /= aircraft.id) list
+
+
+saveNewLogThenUpload : File.File -> EditorState -> Model -> ( Model, Cmd Msg )
+saveNewLogThenUpload file editor model =
+    let
+        logbookKey =
+            String.fromInt editor.logbookId
+
+        existing =
+            Dict.get logbookKey model.logs |> Maybe.withDefault []
+
+        ( localLog, savedOutbox ) =
+            saveLocalLog editor.localLog existing model.outbox
+
+        outbox =
+            if model.busy then
+                case savedOutbox of
+                    newest :: rest ->
+                        rest ++ [ newest ]
+
+                    [] ->
+                        []
+
+            else
+                savedOutbox
+
+        logs =
+            Dict.insert logbookKey (upsertLocal existing localLog) model.logs
+
+        editRoute =
+            EditorEdit editor.logbookId localLog.clientId
+    in
+    ( { model
+        | editor = Just { editor | localLog = localLog, uploadingFile = True, pendingFile = Just file }
+        , logs = logs
+        , outbox = outbox
+        , error =
+            if model.online then
+                Nothing
+
+            else
+                Just "Hors ligne. La photo sera envoyée à la synchronisation."
+      }
+    , Cmd.batch
+        [ persistLogs logs
+        , Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
+        , if model.route == editRoute then
+            Cmd.none
+
+          else
+            Nav.pushUrl model.key (Route.toPath editRoute)
+        , if model.busy then
+            Cmd.none
+
+          else
+            cmdMsg FlushOutbox
+        ]
+    )
+
+
+uploadPendingFile : String -> Int -> LogEntry -> Model -> ( Maybe EditorState, Cmd Msg )
+uploadPendingFile clientId serverId entry model =
+    case model.editor of
+        Just editor ->
+            if editor.localLog.clientId == clientId then
+                let
+                    current =
+                        editor.localLog
+
+                    localLog =
+                        { current | serverId = Just serverId, syncStatus = Synced, entry = entry }
+                in
+                case ( editor.pendingFile, model.session ) of
+                    ( Just file, Just session ) ->
+                        ( Just { editor | localLog = localLog, pendingFile = Nothing, uploadingFile = True }
+                        , Cloudy.uploadLogFile (Session.toClient session) editor.logbookId serverId file
+                            |> Request.send GotLogFileUpload
+                        )
+
+                    _ ->
+                        ( Just { editor | localLog = localLog, pendingFile = Nothing, uploadingFile = False }
+                        , Cmd.none
+                        )
+
+            else
+                ( Just editor, Cmd.none )
+
+        Nothing ->
+            ( Nothing, Cmd.none )
+
+
+clearPendingFile : Maybe EditorState -> Maybe EditorState
+clearPendingFile editor =
+    Maybe.map (\current -> { current | pendingFile = Nothing, uploadingFile = False }) editor
 
 
 setEditorDate : String -> EditorState -> EditorState

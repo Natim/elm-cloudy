@@ -1,5 +1,6 @@
-module LogHelpers exposing (emptyEntry, flightDate, logbookId, registration, serverId, setFlightDate, title)
+module LogHelpers exposing (addFile, emptyEntry, files, flightDate, logbookId, registration, serverId, setFlightDate, title)
 
+import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory(..))
@@ -103,6 +104,56 @@ registration entry =
 
         ParachuteCloudyEntry log ->
             log.aircraft
+
+
+files : LogEntry -> List AttachedFile
+files entry =
+    case entry of
+        PlaneDgacEntry log ->
+            log.files
+
+        HelicopterDgacEntry log ->
+            log.files
+
+        GliderDgacEntry log ->
+            log.files
+
+        PlaneFcl1080Entry log ->
+            log.files
+
+        UlmFfplumEntry log ->
+            log.files
+
+        BalloonDgacEntry log ->
+            log.files
+
+        ParachuteCloudyEntry log ->
+            log.files
+
+
+addFile : AttachedFile -> LogEntry -> LogEntry
+addFile file entry =
+    case entry of
+        PlaneDgacEntry log ->
+            PlaneDgacEntry { log | files = file :: log.files }
+
+        HelicopterDgacEntry log ->
+            HelicopterDgacEntry { log | files = file :: log.files }
+
+        GliderDgacEntry log ->
+            GliderDgacEntry { log | files = file :: log.files }
+
+        PlaneFcl1080Entry log ->
+            PlaneFcl1080Entry { log | files = file :: log.files }
+
+        UlmFfplumEntry log ->
+            UlmFfplumEntry { log | files = file :: log.files }
+
+        BalloonDgacEntry log ->
+            BalloonDgacEntry { log | files = file :: log.files }
+
+        ParachuteCloudyEntry log ->
+            ParachuteCloudyEntry { log | files = file :: log.files }
 
 
 setFlightDate : String -> LogEntry -> LogEntry

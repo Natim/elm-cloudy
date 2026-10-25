@@ -1,5 +1,6 @@
 module View.Editor exposing (view)
 
+import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.BalloonDgac as BalloonDgac
 import Cloudy.Data.Log.GliderDgac as GliderDgac
@@ -7,9 +8,10 @@ import Cloudy.Data.Log.ParachuteCloudy as ParachuteCloudy
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
-import Html exposing (Html, button, div, h1, input, option, select, text, textarea)
-import Html.Attributes exposing (checked, class, name, placeholder, selected, type_, value)
+import Html exposing (Html, button, div, h1, img, input, option, select, text, textarea)
+import Html.Attributes exposing (alt, checked, class, disabled, name, placeholder, selected, src, type_, value)
 import Html.Events exposing (onBlur, onClick, onInput)
+import LogHelpers
 import TimeFormat
 
 
@@ -21,13 +23,21 @@ type alias DateInput msg =
     }
 
 
-view : LogEntry -> DateInput msg -> (LogEntry -> msg) -> msg -> msg -> Html msg
-view entry dates onChange onSave onCancel =
-    div [ class "shell" ]
+type alias FilesInput msg =
+    { baseUrl : String
+    , uploading : Bool
+    , onPick : msg
+    }
+
+
+view : LogEntry -> DateInput msg -> FilesInput msg -> (LogEntry -> msg) -> msg -> msg -> Html msg
+view entry dates filesInput onChange onSave onCancel =
+    div [ class "editor" ]
         [ div [ class "card" ]
             [ h1 [] [ text "Vol" ]
             , body entry dates onChange
-            , div [ class "fab" ]
+            , filesField filesInput (LogHelpers.files entry)
+            , div [ class "form-actions" ]
                 [ button [ type_ "button", class "btn", onClick onSave ] [ text "Enregistrer" ]
                 , button [ type_ "button", class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
                 ]
@@ -177,6 +187,60 @@ parachuteForm log dates onChange =
         , field "Voile" log.canopy (\v -> onChange { log | canopy = v })
         , textArea "Commentaires" log.comments (\v -> onChange { log | comments = v })
         ]
+
+
+filesField : FilesInput msg -> List AttachedFile -> Html msg
+filesField filesInput attached =
+    div [ class "field" ]
+        [ Html.label [] [ text "Photos" ]
+        , div [ class "file-list" ] (List.map (fileThumb filesInput.baseUrl) attached)
+        , button
+            [ type_ "button"
+            , class "btn btn-secondary"
+            , disabled filesInput.uploading
+            , onClick filesInput.onPick
+            ]
+            [ text
+                (if filesInput.uploading then
+                    "Envoi…"
+
+                 else
+                    "Ajouter une photo"
+                )
+            ]
+        ]
+
+
+fileThumb : String -> AttachedFile -> Html msg
+fileThumb baseUrl file =
+    img
+        [ class "file-thumb"
+        , src (fileUrl baseUrl file.url)
+        , alt "Photo du vol"
+        ]
+        []
+
+
+fileUrl : String -> String -> String
+fileUrl baseUrl url =
+    if String.startsWith "https://" url || String.startsWith "http://" url then
+        url
+
+    else if String.startsWith "/" url then
+        origin baseUrl ++ url
+
+    else
+        origin baseUrl ++ "/" ++ url
+
+
+origin : String -> String
+origin baseUrl =
+    case String.split "/" baseUrl of
+        scheme :: "" :: host :: _ ->
+            scheme ++ "//" ++ host
+
+        _ ->
+            baseUrl
 
 
 dateField : String -> DateInput msg -> Html msg

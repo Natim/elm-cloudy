@@ -10,8 +10,11 @@ import Json.Decode as Decode
 import LocalLog exposing (SyncStatus(..))
 import Model exposing (Model, Msg(..))
 import Route exposing (Route(..))
+import Stats
+import View.Aircraft as AircraftView
 import View.Editor as Editor
 import View.Logbook as Logbook
+import View.Stats as StatsView
 
 
 view : Model -> Html Msg
@@ -32,6 +35,23 @@ view model =
 
             Logs id ->
                 logsView model id
+
+            Dashboard ->
+                dashboardView model
+
+            Aircraft id ->
+                div [ class "shell" ]
+                    [ AircraftView.viewList
+                        (Dict.get (String.fromInt id) model.aircraft |> Maybe.withDefault [])
+                        (StartNewAircraft id)
+                        (\plane -> OpenAircraftEditor id plane.id)
+                    ]
+
+            AircraftNew id ->
+                aircraftEditorView model id
+
+            AircraftEdit id _ ->
+                aircraftEditorView model id
 
             EditorNew id ->
                 editorRoute model id
@@ -182,20 +202,78 @@ logsView model logbookId =
         ]
 
 
+dashboardView : Model -> Html Msg
+dashboardView model =
+    let
+        logbookId =
+            model.selectedLogbookId |> Maybe.withDefault 0
+
+        logs =
+            Dict.get (String.fromInt logbookId) model.logs |> Maybe.withDefault []
+    in
+    div [ class "shell" ]
+        [ StatsView.view
+            { title = "Tableau de bord"
+            , subtitle = "Activité du carnet sélectionné."
+            , summary = Stats.summarize logs (Dict.get (String.fromInt logbookId) model.reports)
+            , truncated = List.length logs >= 100
+            , onNewFlight = StartNewLog logbookId
+            , onAircraft = OpenAircraft
+            }
+        ]
+
+
+aircraftEditorView : Model -> Int -> Html Msg
+aircraftEditorView model logbookId =
+    case model.aircraftEditor of
+        Just editor ->
+            div [ class "shell" ]
+                [ AircraftView.viewForm editor
+                    Nothing
+                    model.busy
+                    { onRegistration = AircraftRegistrationChanged
+                    , onType = AircraftTypeChanged
+                    , onAirport = AircraftAirportChanged
+                    , onSave = SaveAircraft
+                    , onAskDelete = AskDeleteAircraft
+                    , onDelete = DeleteAircraft
+                    , onCancel = OpenAircraft
+                    }
+                ]
+
+        Nothing ->
+            div [ class "shell" ]
+                [ AircraftView.viewList
+                    (Dict.get (String.fromInt logbookId) model.aircraft |> Maybe.withDefault [])
+                    (StartNewAircraft logbookId)
+                    (\plane -> OpenAircraftEditor logbookId plane.id)
+                ]
+
+
 editorRoute : Model -> Int -> Html Msg
 editorRoute model logbookId =
     case model.editor of
         Just editor ->
             if editor.logbookId == logbookId then
-                Editor.view editor.localLog.entry
-                    { draft = editor.dateDraft
-                    , onText = DateTextChanged
-                    , onPicked = DatePicked
-                    , onBlur = DateTextBlurred
-                    }
-                    EditorChanged
-                    SaveEditor
-                    CancelEditor
+                div []
+                    [ maybeError model.error
+                    , Editor.view editor.localLog.entry
+                        { draft = editor.dateDraft
+                        , onText = DateTextChanged
+                        , onPicked = DatePicked
+                        , onBlur = DateTextBlurred
+                        }
+                        { baseUrl =
+                            model.session
+                                |> Maybe.map .baseUrl
+                                |> Maybe.withDefault "https://cloudy.fr/api/v1"
+                        , uploading = editor.uploadingFile
+                        , onPick = PickLogFile
+                        }
+                        EditorChanged
+                        SaveEditor
+                        CancelEditor
+                    ]
 
             else
                 p [ class "shell" ] [ text "Chargement…" ]

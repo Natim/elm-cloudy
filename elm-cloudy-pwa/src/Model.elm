@@ -1,5 +1,6 @@
 module Model exposing
-    ( EditorState
+    ( AircraftEditor
+    , EditorState
     , LoginForm
     , Model
     , Msg(..)
@@ -8,6 +9,8 @@ module Model exposing
 
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
+import Cloudy.Data.Aircraft exposing (Aircraft)
+import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry)
 import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.Logbook exposing (Logbook)
@@ -15,6 +18,7 @@ import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
 import Cloudy.Data.Report exposing (ReportEntry)
 import Cloudy.Data.Token exposing (TokenResponse)
 import Dict
+import File
 import Http
 import Json.Decode
 import LocalLog exposing (LocalLog)
@@ -36,6 +40,11 @@ type alias Model =
     , outbox : List OutboxOp
     , loginForm : LoginForm
     , editor : Maybe EditorState
+    , navOpen : Bool
+    , selectedLogbookId : Maybe Int
+    , aircraft : Dict.Dict String (List Aircraft)
+    , aircraftEditor : Maybe AircraftEditor
+    , pendingAircraft : Maybe ( Int, Int )
     , error : Maybe String
     , busy : Bool
     , storageReady : Bool
@@ -56,6 +65,18 @@ type alias EditorState =
     , category : LogbookCategory
     , localLog : LocalLog
     , dateDraft : Maybe String
+    , uploadingFile : Bool
+    , pendingFile : Maybe File.File
+    }
+
+
+type alias AircraftEditor =
+    { logbookId : Int
+    , aircraftId : Maybe Int
+    , registration : String
+    , aircraftType : String
+    , airport : String
+    , confirmingDelete : Bool
     }
 
 
@@ -84,8 +105,30 @@ type Msg
     | DateTextChanged String
     | DatePicked String
     | DateTextBlurred
+    | PickLogFile
+    | GotLogFile File.File
+    | GotLogFileUpload (Result Http.Error AttachedFile)
     | SaveEditor
     | CancelEditor
+    | ToggleNav
+    | CloseNav
+    | MenuLogbookChanged String
+    | OpenDashboard
+    | OpenFlights
+    | OpenLogbooks
+    | OpenAircraft
+    | RefreshAircraft Int
+    | GotAircraft Int (Result Http.Error (List Aircraft))
+    | StartNewAircraft Int
+    | OpenAircraftEditor Int Int
+    | AircraftRegistrationChanged String
+    | AircraftTypeChanged String
+    | AircraftAirportChanged String
+    | SaveAircraft
+    | GotSavedAircraft Int (Result Http.Error Aircraft)
+    | AskDeleteAircraft
+    | DeleteAircraft
+    | GotDeletedAircraft Int Int (Result Http.Error ())
     | FlushOutbox
     | GotOutboxCreate String (Result Http.Error LogEntry)
     | GotOutboxReplace (Result Http.Error LogEntry)
@@ -105,6 +148,11 @@ init _ url key =
       , outbox = []
       , loginForm = { email = "", password = "", baseUrl = "https://cloudy.fr/api/v1", advancedOpen = False }
       , editor = Nothing
+      , navOpen = False
+      , selectedLogbookId = Nothing
+      , aircraft = Dict.empty
+      , aircraftEditor = Nothing
+      , pendingAircraft = Nothing
       , error = Nothing
       , busy = False
       , storageReady = False

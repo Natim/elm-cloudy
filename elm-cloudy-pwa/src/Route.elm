@@ -1,4 +1,4 @@
-module Route exposing (Route(..), fromUrl, toPath)
+module Route exposing (Route(..), fromUrl, logbookId, toPath)
 
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser, s, string, top)
@@ -6,8 +6,12 @@ import Url.Parser as Parser exposing ((</>), Parser, s, string, top)
 
 type Route
     = Login
+    | Dashboard
     | Logbooks
     | Logs Int
+    | Aircraft Int
+    | AircraftNew Int
+    | AircraftEdit Int Int
     | EditorNew Int
     | EditorEdit Int String
 
@@ -16,7 +20,11 @@ parser : Parser (Route -> a) a
 parser =
     Parser.oneOf
         [ Parser.map Login (s "login")
+        , Parser.map Dashboard (s "dashboard")
         , Parser.map Logbooks (s "logbooks")
+        , Parser.map AircraftNew (s "logbooks" </> Parser.int </> s "aircraft" </> s "new")
+        , Parser.map AircraftEdit (s "logbooks" </> Parser.int </> s "aircraft" </> Parser.int)
+        , Parser.map Aircraft (s "logbooks" </> Parser.int </> s "aircraft")
         , Parser.map EditorNew (s "logbooks" </> Parser.int </> s "new")
         , Parser.map EditorEdit (s "logbooks" </> Parser.int </> s "edit" </> string)
         , Parser.map Logs (s "logbooks" </> Parser.int)
@@ -61,11 +69,23 @@ toPath route =
                 Login ->
                     "/login"
 
+                Dashboard ->
+                    "/dashboard"
+
                 Logbooks ->
                     "/logbooks"
 
                 Logs id ->
                     "/logbooks/" ++ String.fromInt id
+
+                Aircraft id ->
+                    "/logbooks/" ++ String.fromInt id ++ "/aircraft"
+
+                AircraftNew id ->
+                    "/logbooks/" ++ String.fromInt id ++ "/aircraft/new"
+
+                AircraftEdit id aircraftId ->
+                    "/logbooks/" ++ String.fromInt id ++ "/aircraft/" ++ String.fromInt aircraftId
 
                 EditorNew id ->
                     "/logbooks/" ++ String.fromInt id ++ "/new"
@@ -73,3 +93,34 @@ toPath route =
                 EditorEdit id clientId ->
                     "/logbooks/" ++ String.fromInt id ++ "/edit/" ++ clientId
            )
+
+
+logbookId : Route -> Maybe Int
+logbookId route =
+    case route of
+        Logs id ->
+            Just id
+
+        Aircraft id ->
+            Just id
+
+        AircraftNew id ->
+            Just id
+
+        AircraftEdit id _ ->
+            Just id
+
+        EditorNew id ->
+            Just id
+
+        EditorEdit id _ ->
+            Just id
+
+        Login ->
+            Nothing
+
+        Dashboard ->
+            Nothing
+
+        Logbooks ->
+            Nothing
