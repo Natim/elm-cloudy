@@ -129,9 +129,9 @@ fclForm log onChange =
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
+        , selectField "SE / ME" (singlePilotChoice log) singlePilotOptions (\choice -> onChange (setSinglePilot log choice))
+        , timeField "Mono pilote (HH:MM)" log.single_pilot_time (\v -> onChange { log | single_pilot_time = v })
         , timeField "Total vol (HH:MM)" log.total_time_flight (\v -> onChange { log | total_time_flight = v })
-        , timeField "SE (HH:MM)" log.single_pilot_se (\v -> onChange { log | single_pilot_se = v })
-        , timeField "ME (HH:MM)" log.single_pilot_me (\v -> onChange { log | single_pilot_me = v })
         , textArea "Commentaires" log.comments (\v -> onChange { log | comments = v })
         ]
 
@@ -188,6 +188,39 @@ selectField fieldLabel current options onSelect =
 optionItem : String -> ( String, String ) -> Html msg
 optionItem current ( value_, optionLabel ) =
     option [ value value_, selected (value_ == current) ] [ text optionLabel ]
+
+
+singlePilotOptions : List ( String, String )
+singlePilotOptions =
+    [ ( "se", "SE" )
+    , ( "me", "ME" )
+    , ( "none", "Aucun" )
+    ]
+
+
+singlePilotChoice : PlaneFcl1080.Log -> String
+singlePilotChoice log =
+    if log.single_pilot_me then
+        "me"
+
+    else if log.single_pilot_se then
+        "se"
+
+    else
+        "none"
+
+
+setSinglePilot : PlaneFcl1080.Log -> String -> PlaneFcl1080.Log
+setSinglePilot log choice =
+    case choice of
+        "se" ->
+            { log | single_pilot_se = True, single_pilot_me = False }
+
+        "me" ->
+            { log | single_pilot_se = False, single_pilot_me = True }
+
+        _ ->
+            { log | single_pilot_se = False, single_pilot_me = False }
 
 
 planeFunctions : List ( String, String )

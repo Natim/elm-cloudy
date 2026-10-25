@@ -23,8 +23,9 @@ type alias Log =
     , arrival_time : String
     , aircraft_type : String
     , aircraft_registration : String
-    , single_pilot_se : Int
-    , single_pilot_me : Int
+    , single_pilot_se : Bool
+    , single_pilot_me : Bool
+    , single_pilot_time : Int
     , multi_pilot_time : Int
     , total_time_flight : Int
     , pilot_in_command_name : String
@@ -57,8 +58,9 @@ type alias Patch =
     , arrival_time : Maybe String
     , aircraft_type : Maybe String
     , aircraft_registration : Maybe String
-    , single_pilot_se : Maybe Int
-    , single_pilot_me : Maybe Int
+    , single_pilot_se : Maybe Bool
+    , single_pilot_me : Maybe Bool
+    , single_pilot_time : Maybe Int
     , multi_pilot_time : Maybe Int
     , total_time_flight : Maybe Int
     , pilot_in_command_name : Maybe String
@@ -98,8 +100,9 @@ decoder =
         |> required "arrival_time" Decode.string
         |> required "aircraft_type" Decode.string
         |> required "aircraft_registration" Decode.string
-        |> required "single_pilot_se" Decode.int
-        |> required "single_pilot_me" Decode.int
+        |> required "single_pilot_se" Decode.bool
+        |> required "single_pilot_me" Decode.bool
+        |> required "single_pilot_time" Decode.int
         |> required "multi_pilot_time" Decode.int
         |> required "total_time_flight" Decode.int
         |> required "pilot_in_command_name" Decode.string
@@ -158,8 +161,9 @@ encodeReplace record =
         , ( "arrival_time", Encode.string record.arrival_time )
         , ( "aircraft_type", Encode.string record.aircraft_type )
         , ( "aircraft_registration", Encode.string record.aircraft_registration )
-        , ( "single_pilot_se", Encode.int record.single_pilot_se )
-        , ( "single_pilot_me", Encode.int record.single_pilot_me )
+        , ( "single_pilot_se", Encode.bool record.single_pilot_se )
+        , ( "single_pilot_me", Encode.bool record.single_pilot_me )
+        , ( "single_pilot_time", Encode.int record.single_pilot_time )
         , ( "multi_pilot_time", Encode.int record.multi_pilot_time )
         , ( "total_time_flight", Encode.int record.total_time_flight )
         , ( "pilot_in_command_name", Encode.string record.pilot_in_command_name )
@@ -194,8 +198,9 @@ encodePatch record =
             , maybeMap record.arrival_time (\v -> ( "arrival_time", Encode.string v ))
             , maybeMap record.aircraft_type (\v -> ( "aircraft_type", Encode.string v ))
             , maybeMap record.aircraft_registration (\v -> ( "aircraft_registration", Encode.string v ))
-            , maybeMap record.single_pilot_se (\v -> ( "single_pilot_se", Encode.int v ))
-            , maybeMap record.single_pilot_me (\v -> ( "single_pilot_me", Encode.int v ))
+            , maybeMap record.single_pilot_se (\v -> ( "single_pilot_se", Encode.bool v ))
+            , maybeMap record.single_pilot_me (\v -> ( "single_pilot_me", Encode.bool v ))
+            , maybeMap record.single_pilot_time (\v -> ( "single_pilot_time", Encode.int v ))
             , maybeMap record.multi_pilot_time (\v -> ( "multi_pilot_time", Encode.int v ))
             , maybeMap record.total_time_flight (\v -> ( "total_time_flight", Encode.int v ))
             , maybeMap record.pilot_in_command_name (\v -> ( "pilot_in_command_name", Encode.string v ))

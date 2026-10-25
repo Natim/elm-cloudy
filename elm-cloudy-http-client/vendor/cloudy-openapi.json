@@ -444,9 +444,12 @@
             "type": "string"
           },
           "single_pilot_se": {
-            "type": "integer"
+            "type": "boolean"
           },
           "single_pilot_me": {
+            "type": "boolean"
+          },
+          "single_pilot_time": {
             "type": "integer"
           },
           "multi_pilot_time": {
@@ -541,9 +544,12 @@
             "type": "string"
           },
           "single_pilot_se": {
-            "type": "integer"
+            "type": "boolean"
           },
           "single_pilot_me": {
+            "type": "boolean"
+          },
+          "single_pilot_time": {
             "type": "integer"
           },
           "multi_pilot_time": {
