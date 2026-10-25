@@ -146,13 +146,21 @@ fclForm log dates onChange =
             [ field "Arrivée" log.arrival_place (\v -> onChange { log | arrival_place = v })
             , field "Heure arrivée" log.arrival_time (\v -> onChange { log | arrival_time = v })
             ]
-        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-        , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+        , div [ class "grid-2" ]
+            [ field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
+            , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
+            ]
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
         , radioField "SE / ME" (singlePilotChoice log) (\choice -> onChange (setSinglePilot log choice))
         , timeField "Temps de vol (HH:MM)" flightMinutes (\v -> onChange { log | single_pilot_time = v, total_time_flight = v })
-        , intField "Atterrissages jour" log.landing_day (\v -> onChange { log | landing_day = v })
-        , intField "Atterrissages nuit" log.landing_night (\v -> onChange { log | landing_night = v })
+        , div [ class "grid-2" ]
+            [ intField "Décollages jour" log.take_off_day (\v -> onChange { log | take_off_day = v })
+            , intField "Atterrissages jour" log.landing_day (\v -> onChange { log | landing_day = v })
+            ]
+        , div [ class "grid-2" ]
+            [ intField "Décollages nuit" log.take_off_night (\v -> onChange { log | take_off_night = v })
+            , intField "Atterrissages nuit" log.landing_night (\v -> onChange { log | landing_night = v })
+            ]
         , textArea "Commentaires" log.comments (\v -> onChange { log | comments = v })
         ]
 
@@ -253,8 +261,9 @@ radioItem current onSelect ( value_, optionLabel ) =
         [ input
             [ type_ "radio"
             , name "single-pilot"
+            , value value_
             , checked (value_ == current)
-            , onClick (onSelect value_)
+            , onInput onSelect
             ]
             []
         , text optionLabel
