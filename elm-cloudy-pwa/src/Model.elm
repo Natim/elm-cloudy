@@ -9,8 +9,8 @@ module Model exposing
 import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
 import Cloudy.Data.Log exposing (LogEntry)
-import Cloudy.Data.Logbook as Logbook exposing (Logbook)
 import Cloudy.Data.LogListPage as LogListPage
+import Cloudy.Data.Logbook as Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
 import Cloudy.Data.Token as Token exposing (TokenResponse)
 import Dict

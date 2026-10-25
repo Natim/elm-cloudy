@@ -9,7 +9,7 @@ import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
 import Html exposing (Html, button, div, h1, input, option, select, text, textarea)
 import Html.Attributes exposing (class, selected, value)
-import Html.Events exposing (onInput, onClick)
+import Html.Events exposing (onClick, onInput)
 import TimeFormat
 
 

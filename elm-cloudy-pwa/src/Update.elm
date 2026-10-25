@@ -13,7 +13,6 @@ import Cloudy.Request as Request
 import Dict
 import Json.Decode
 import Json.Encode as Encode
-import Task
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
 import Model exposing (Model, Msg(..))
@@ -23,6 +22,7 @@ import Ports
 import Route exposing (Route(..))
 import Session
 import StorageCodec
+import Task
 import Url
 
 
