@@ -3,24 +3,16 @@ module Model exposing
     , EditorState
     , LoginForm
     , Model
-    , Msg(..)
     , init
     )
 
-import Browser exposing (UrlRequest)
 import Browser.Navigation as Nav
 import Cloudy.Data.Aircraft exposing (Aircraft)
-import Cloudy.Data.AttachedFile exposing (AttachedFile)
-import Cloudy.Data.Log exposing (LogEntry)
-import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
 import Cloudy.Data.Report exposing (ReportEntry)
-import Cloudy.Data.Token exposing (TokenResponse)
 import Dict
 import File
-import Http
-import Json.Decode
 import LocalLog exposing (LocalLog)
 import Outbox exposing (OutboxOp)
 import Ports
@@ -85,63 +77,7 @@ type alias AircraftEditor =
     }
 
 
-type Msg
-    = LinkClicked UrlRequest
-    | UrlChanged Url
-    | StorageLoaded Json.Decode.Value
-    | ConnectivityChanged Bool
-    | LoginEmailChanged String
-    | LoginPasswordChanged String
-    | LoginBaseUrlChanged String
-    | LoginAdvancedToggled Bool
-    | LoginSubmitted
-    | GotToken (Result Http.Error TokenResponse)
-    | RefreshLogbooks
-    | GotLogbooks (Result Http.Error (List Logbook))
-    | SelectLogbook Int
-    | BackToLogbooks
-    | RefreshLogs Int
-    | GotLogsPage Int LogbookCategory Int (Maybe String) (Result Http.Error LogListPage.LogListPage)
-    | GotReports Int (Result Http.Error ReportEntry)
-    | StartNewLog Int
-    | NowReceived String
-    | EditLog Int String
-    | EditorChanged LogEntry
-    | DateTextChanged String
-    | DatePicked String
-    | DateTextBlurred
-    | GotLogFile File.File
-    | GotLogFileUpload (Result Http.Error AttachedFile)
-    | SaveEditor
-    | CancelEditor
-    | ToggleNav
-    | CloseNav
-    | MenuLogbookChanged String
-    | OpenDashboard
-    | OpenFlights
-    | OpenAircraft
-    | RefreshAircraft Int
-    | GotAircraft Int (Result Http.Error (List Aircraft))
-    | StartNewAircraft Int
-    | OpenAircraftEditor Int Int
-    | AircraftRegistrationChanged String
-    | AircraftTypeChanged String
-    | AircraftAirportChanged String
-    | GotAircraftPhoto File.File
-    | GotAircraftPhotoUpload Int Int Bool (Result Http.Error AttachedFile)
-    | SaveAircraft
-    | GotSavedAircraft Int (Result Http.Error Aircraft)
-    | AskDeleteAircraft
-    | DeleteAircraft
-    | GotDeletedAircraft Int Int (Result Http.Error ())
-    | FlushOutbox
-    | GotOutboxCreate String (Result Http.Error LogEntry)
-    | GotOutboxReplace (Result Http.Error LogEntry)
-    | GotOutboxDelete (Result Http.Error ())
-    | Logout
-
-
-init : () -> Url -> Nav.Key -> ( Model, Cmd Msg )
+init : () -> Url -> Nav.Key -> ( Model, Cmd msg )
 init _ url key =
     ( { key = key
       , route = Route.fromUrl url

@@ -1,9 +1,10 @@
 module Main exposing (main)
 
 import Browser exposing (UrlRequest(..))
-import Model exposing (Model, Msg(..), init)
+import Model exposing (Model, init)
 import Ports
-import Update exposing (update)
+import Update exposing (Msg(..), update)
+import Update.Editor as Editor
 import View exposing (view)
 
 
@@ -28,5 +29,5 @@ subscriptions _ =
     Sub.batch
         [ Ports.storageLoaded StorageLoaded
         , Ports.connectivityChanged ConnectivityChanged
-        , Ports.nowReceived NowReceived
+        , Ports.nowReceived (EditorMsg << Editor.NowReceived)
         ]
