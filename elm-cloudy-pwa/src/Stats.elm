@@ -10,7 +10,6 @@ import Cloudy.Data.Report.PlaneFcl1080 as FclReport
 import Cloudy.Data.Report.UlmFfplum as UlmReport
 import Dict exposing (Dict)
 import LocalLog exposing (LocalLog)
-import LogHelpers
 import LogbookFormat
 import TimeFormat
 
@@ -27,8 +26,7 @@ type alias Summary =
 
 
 type alias AircraftTotal =
-    { registration : String
-    , aircraftType : String
+    { aircraftType : String
     , flights : Int
     , minutes : Int
     }
@@ -274,35 +272,36 @@ aircraftTotals logs =
     logs
         |> List.foldl insertAircraft Dict.empty
         |> Dict.values
-        |> List.sortBy (\item -> ( -item.minutes, item.registration ))
+        |> List.sortBy (\item -> ( -item.minutes, item.aircraftType ))
 
 
 insertAircraft : LocalLog -> Dict String AircraftTotal -> Dict String AircraftTotal
 insertAircraft log dict =
     let
+        raw =
+            String.trim (aircraftType log.entry)
+
         key =
-            registration log.entry
+            String.toUpper raw
+
+        label =
+            if raw == "" then
+                "Type non renseigné"
+
+            else
+                raw
 
         current =
             Dict.get key dict
                 |> Maybe.withDefault
-                    { registration = key
-                    , aircraftType = aircraftType log.entry
+                    { aircraftType = label
                     , flights = 0
                     , minutes = 0
                     }
-
-        nextType =
-            if current.aircraftType == "" then
-                aircraftType log.entry
-
-            else
-                current.aircraftType
     in
     Dict.insert key
         { current
-            | aircraftType = nextType
-            , flights = current.flights + 1
+            | flights = current.flights + 1
             , minutes = current.minutes + blockMinutes log.entry
         }
         dict
@@ -397,16 +396,6 @@ landingCount entry =
 
         ParachuteCloudyEntry _ ->
             0
-
-
-registration : LogEntry -> String
-registration entry =
-    case String.trim (LogHelpers.registration entry) of
-        "" ->
-            "Sans immatriculation"
-
-        value ->
-            String.toUpper value
 
 
 aircraftType : LogEntry -> String

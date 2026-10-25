@@ -62,7 +62,7 @@ caption config =
                 "Chiffres calculés sur les vols enregistrés sur cet appareil."
     in
     if config.truncated then
-        source ++ " La répartition par aéronef porte sur les 100 derniers vols chargés."
+        source ++ " La répartition par type porte sur les 100 derniers vols chargés."
 
     else
         source
@@ -71,7 +71,7 @@ caption config =
 aircraftCard : List AircraftTotal -> Html msg
 aircraftCard rows =
     div [ class "card" ]
-        [ p [ class "section-title" ] [ text "Par aéronef" ]
+        [ p [ class "section-title" ] [ text "Par type" ]
         , if List.isEmpty rows then
             p [ class "empty" ] [ text "Aucun vol chargé pour ce carnet." ]
 
@@ -84,17 +84,10 @@ aircraftRow : AircraftTotal -> Html msg
 aircraftRow row =
     div [ class "stat-row" ]
         [ div []
-            [ span [ class "stat-row-title" ] [ text row.registration ]
+            [ span [ class "stat-row-title" ] [ text row.aircraftType ]
             , span [ class "stat-row-meta" ]
                 [ text
-                    (row.aircraftType
-                        ++ (if row.aircraftType == "" then
-                                ""
-
-                            else
-                                " · "
-                           )
-                        ++ String.fromInt row.flights
+                    (String.fromInt row.flights
                         ++ (if row.flights > 1 then
                                 " vols"
 

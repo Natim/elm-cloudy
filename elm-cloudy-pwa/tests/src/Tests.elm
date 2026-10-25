@@ -151,11 +151,11 @@ all =
                         ()
             ]
         , describe "Stats"
-            [ test "block time ignores instrument and groups by registration" <|
+            [ test "block time ignores instrument and groups by aircraft type" <|
                 \_ ->
                     let
                         summary =
-                            Stats.summarize [ sample 60 "F-GAAA", sample 30 "f-gaaa", sample 15 "F-GBBB" ] Nothing
+                            Stats.summarize [ sample 60 "F-GAAA" "DR400", sample 30 "F-GZZZ" "dr400", sample 15 "F-GBBB" "C172" ] Nothing
                     in
                     Expect.all
                         [ \_ -> Expect.equal 3 summary.flights
@@ -165,23 +165,23 @@ all =
                             case summary.byAircraft of
                                 first :: second :: [] ->
                                     Expect.all
-                                        [ \_ -> Expect.equal "F-GAAA" first.registration
+                                        [ \_ -> Expect.equal "DR400" first.aircraftType
                                         , \_ -> Expect.equal 2 first.flights
                                         , \_ -> Expect.equal 90 first.minutes
-                                        , \_ -> Expect.equal "F-GBBB" second.registration
+                                        , \_ -> Expect.equal "C172" second.aircraftType
                                         ]
                                         ()
 
                                 _ ->
-                                    Expect.fail "expected two aircraft"
+                                    Expect.fail "expected two aircraft types"
                         ]
                         summary
             ]
         ]
 
 
-sample : Int -> String -> LocalLog
-sample minutes registration =
+sample : Int -> String -> String -> LocalLog
+sample minutes registration aircraftType =
     let
         entry =
             case LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 "2020-01-01T12:00:00" of
@@ -190,7 +190,7 @@ sample minutes registration =
                         { log
                             | crew_day_minutes = minutes
                             , aircraft_registration = registration
-                            , aircraft_type = "DR400"
+                            , aircraft_type = aircraftType
                             , takeoff_count = 1
                             , landing_count = 1
                             , instrument_pilot_minutes = 15
