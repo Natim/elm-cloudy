@@ -38,9 +38,38 @@
     );
   }
 
+  const SESSION_COOKIE = "elm-cloudy-session";
+
+  function readSessionCookie() {
+    const match = document.cookie.match(/(?:^|; )elm-cloudy-session=([^;]*)/);
+    if (!match || !match[1]) {
+      return null;
+    }
+    try {
+      return JSON.parse(decodeURIComponent(match[1]));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeSessionCookie(value) {
+    const secure = location.protocol === "https:" ? "; Secure" : "";
+    if (value == null) {
+      document.cookie =
+        SESSION_COOKIE + "=; Path=/; Max-Age=0; SameSite=Lax" + secure;
+      return;
+    }
+    document.cookie =
+      SESSION_COOKIE +
+      "=" +
+      encodeURIComponent(JSON.stringify(value)) +
+      "; Path=/; Max-Age=2592000; SameSite=Lax" +
+      secure;
+  }
+
   function defaultState() {
     return {
-      session: null,
+      session: readSessionCookie(),
       logbooks: [],
       logs: {},
       outbox: [],
@@ -57,8 +86,13 @@
         idbGet("outbox"),
       ])
         .then(function (parts) {
+          const cookieSession = readSessionCookie();
+          const session = cookieSession || parts[0] || null;
+          if (session && !cookieSession) {
+            writeSessionCookie(session);
+          }
           app.ports.storageLoaded.send({
-            session: parts[0] || null,
+            session: session,
             logbooks: parts[1] || [],
             logs: parts[2] || {},
             outbox: parts[3] || [],
@@ -71,6 +105,7 @@
     });
 
     app.ports.storageSaveSession.subscribe(function (value) {
+      writeSessionCookie(value);
       idbSet("session", value);
     });
 

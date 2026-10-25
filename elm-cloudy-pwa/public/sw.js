@@ -1,4 +1,4 @@
-const CACHE = "elm-cloudy-pwa-v1";
+const CACHE = "elm-cloudy-pwa-v2";
 const ASSETS = [
   "/elm-cloudy/",
   "/elm-cloudy/index.html",

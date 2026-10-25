@@ -23,11 +23,23 @@ type alias LoadedState =
 decoder : Decoder LoadedState
 decoder =
     Decode.map5 LoadedState
-        (Decode.maybe (Decode.field "session" Session.decoder))
-        (Decode.field "logbooks" (Decode.list Logbook.decoder))
-        (Decode.field "logs" StorageCodec.decodeLogs)
-        (Decode.field "outbox" StorageCodec.decodeOutbox)
-        (Decode.field "online" Decode.bool)
+        (Decode.oneOf
+            [ Decode.field "session" (Decode.nullable Session.decoder)
+            , Decode.succeed Nothing
+            ]
+        )
+        (fieldOr "logbooks" (Decode.list Logbook.decoder) [])
+        (fieldOr "logs" StorageCodec.decodeLogs Dict.empty)
+        (fieldOr "outbox" StorageCodec.decodeOutbox [])
+        (fieldOr "online" Decode.bool True)
+
+
+fieldOr : String -> Decoder a -> a -> Decoder a
+fieldOr name itemDecoder fallback =
+    Decode.oneOf
+        [ Decode.field name itemDecoder
+        , Decode.succeed fallback
+        ]
 
 
 encodeLogbooks : List Logbook -> Value

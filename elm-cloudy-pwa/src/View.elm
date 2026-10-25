@@ -4,7 +4,7 @@ import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
 import Dict
 import Html exposing (Html, button, div, h1, h2, p, text)
-import Html.Attributes exposing (class)
+import Html.Attributes exposing (class, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Decode
 import LocalLog exposing (SyncStatus(..))
@@ -102,10 +102,13 @@ logbooksView model =
             [ h2 [] [ text "Carnets" ]
             , button [ class "link-btn", onClick Logout ] [ text "Déconnexion" ]
             ]
-        , if List.isEmpty model.logbooks then
+        , if not model.storageReady || (model.busy && List.isEmpty model.logbooks) then
+            p [] [ text "Chargement…" ]
+
+          else if List.isEmpty model.logbooks then
             div [ class "card" ]
                 [ p [] [ text "Aucun carnet en cache. Tirez pour actualiser une fois en ligne." ]
-                , button [ class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
+                , button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
                 ]
 
           else

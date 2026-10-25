@@ -138,12 +138,17 @@ update msg model =
                                     Cmd.none
                             ]
 
-                      else
+                      else if model.route == Login then
                         Cmd.none
+
+                      else
+                        Nav.pushUrl model.key (Route.toPath Login)
                     )
 
                 Err _ ->
-                    ( { model | storageReady = True }, Cmd.none )
+                    ( { model | storageReady = True, route = Login }
+                    , Nav.pushUrl model.key (Route.toPath Login)
+                    )
 
         ConnectivityChanged online ->
             ( { model | online = online }
@@ -212,12 +217,16 @@ update msg model =
                     )
 
                 Err _ ->
-                    ( { model | busy = False, error = Just "Identifiants invalides." }, Cmd.none )
+                    ( { model | busy = False, error = Just "Identifiants invalides.", route = Login }
+                    , Nav.pushUrl model.key (Route.toPath Login)
+                    )
 
         RefreshLogbooks ->
             case model.session of
                 Nothing ->
-                    ( model, Cmd.none )
+                    ( { model | route = Login }
+                    , Nav.pushUrl model.key (Route.toPath Login)
+                    )
 
                 Just session ->
                     ( { model | busy = True }
@@ -232,8 +241,12 @@ update msg model =
                     , Ports.storageSaveLogbooks (Persisted.encodeLogbooks books)
                     )
 
-                Err _ ->
-                    ( { model | busy = False, error = Just "Impossible de charger les carnets." }, Cmd.none )
+                Err err ->
+                    if unauthorized err then
+                        update Logout { model | busy = False }
+
+                    else
+                        ( { model | busy = False, error = Just "Impossible de charger les carnets." }, Cmd.none )
 
         SelectLogbook id ->
             ( model, Nav.pushUrl model.key (Route.toPath (Logs id)) )
@@ -258,7 +271,14 @@ update msg model =
                     )
 
                 _ ->
-                    ( model, Cmd.none )
+                    case model.session of
+                        Nothing ->
+                            ( { model | route = Login }
+                            , Nav.pushUrl model.key (Route.toPath Login)
+                            )
+
+                        Just _ ->
+                            ( model, Cmd.none )
 
         GotLogsPage logbookId category result ->
             case result of
@@ -283,7 +303,11 @@ update msg model =
                     )
 
                 Err err ->
-                    ( { model | busy = False, error = Just (httpErrorMessage "vols" err) }, Cmd.none )
+                    if unauthorized err then
+                        update Logout { model | busy = False }
+
+                    else
+                        ( { model | busy = False, error = Just (httpErrorMessage "vols" err) }, Cmd.none )
 
         GotReports logbookId result ->
             case result of
@@ -609,6 +633,16 @@ upsertLocal logs localLog =
 persistLogs : Dict.Dict String (List LocalLog) -> Cmd Msg
 persistLogs logs =
     Ports.storageSaveLogs (StorageCodec.encodeLogs logs)
+
+
+unauthorized : Http.Error -> Bool
+unauthorized err =
+    case err of
+        Http.BadStatus 401 ->
+            True
+
+        _ ->
+            False
 
 
 httpErrorMessage : String -> Http.Error -> String
