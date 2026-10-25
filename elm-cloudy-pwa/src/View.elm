@@ -286,7 +286,7 @@ dashboardView model =
 
 aircraftList : Model -> Int -> Html Msg
 aircraftList model logbookId =
-    AircraftView.viewList (aircraftOf model logbookId) (StartNewAircraft logbookId) (\plane -> OpenAircraftEditor logbookId plane.id)
+    AircraftView.viewList (apiBaseUrl model) (aircraftOf model logbookId) (StartNewAircraft logbookId) (\plane -> OpenAircraftEditor logbookId plane.id)
 
 
 aircraftEditorView : Model -> Int -> Html Msg
@@ -294,7 +294,8 @@ aircraftEditorView model logbookId =
     case model.aircraftEditor of
         Just editor ->
             if editor.logbookId == logbookId then
-                AircraftView.viewForm editor
+                AircraftView.viewForm (apiBaseUrl model)
+                    editor
                     (photoOf model editor)
                     model.busy
                     { onRegistration = AircraftRegistrationChanged
@@ -325,10 +326,7 @@ editorRoute model logbookId =
                     , onPicked = DatePicked
                     , onBlur = DateTextBlurred
                     }
-                    { baseUrl =
-                        model.session
-                            |> Maybe.map .baseUrl
-                            |> Maybe.withDefault "https://cloudy.fr/api/v1"
+                    { baseUrl = apiBaseUrl model
                     , uploading = editor.uploadingFile
                     , onFile = GotLogFile
                     }
@@ -369,6 +367,13 @@ aircraftOf model logbookId =
     Dict.get (String.fromInt logbookId) model.aircraft
         |> Maybe.withDefault []
         |> List.sortBy (\plane -> String.toUpper plane.registration)
+
+
+apiBaseUrl : Model -> String
+apiBaseUrl model =
+    model.session
+        |> Maybe.map .baseUrl
+        |> Maybe.withDefault "https://cloudy.fr/api/v1"
 
 
 photoOf : Model -> Model.AircraftEditor -> Maybe String

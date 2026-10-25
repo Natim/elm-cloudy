@@ -4,11 +4,12 @@ import Cloudy.Data.Aircraft exposing (Aircraft)
 import Html exposing (Html, button, div, h2, img, input, p, span, text)
 import Html.Attributes exposing (alt, class, src, type_, value)
 import Html.Events exposing (onClick, onInput)
+import MediaUrl
 import Model exposing (AircraftEditor)
 
 
-viewList : List Aircraft -> msg -> (Aircraft -> msg) -> Html msg
-viewList aircraft onNew onOpen =
+viewList : String -> List Aircraft -> msg -> (Aircraft -> msg) -> Html msg
+viewList baseUrl aircraft onNew onOpen =
     div []
         [ div [ class "page-head" ]
             [ div []
@@ -25,14 +26,14 @@ viewList aircraft onNew onOpen =
                 ]
 
           else
-            div [ class "list" ] (List.map (row onOpen) aircraft)
+            div [ class "list" ] (List.map (row baseUrl onOpen) aircraft)
         ]
 
 
-row : (Aircraft -> msg) -> Aircraft -> Html msg
-row onOpen aircraft =
+row : String -> (Aircraft -> msg) -> Aircraft -> Html msg
+row baseUrl onOpen aircraft =
     button [ type_ "button", class "list-item aircraft-row", onClick (onOpen aircraft) ]
-        [ mark aircraft
+        [ mark baseUrl aircraft
         , span [ class "aircraft-copy" ]
             [ Html.strong [] [ text aircraft.registration ]
             , span [] [ text (meta aircraft) ]
@@ -41,7 +42,8 @@ row onOpen aircraft =
 
 
 viewForm :
-    AircraftEditor
+    String
+    -> AircraftEditor
     -> Maybe String
     -> Bool
     ->
@@ -54,7 +56,7 @@ viewForm :
         , onCancel : msg
         }
     -> Html msg
-viewForm editor photoUrl busy msgs =
+viewForm baseUrl editor photoUrl busy msgs =
     div [ class "editor" ]
         [ div [ class "card" ]
             [ h2 [ class "page-title" ]
@@ -70,7 +72,7 @@ viewForm editor photoUrl busy msgs =
             , p [ class "subtitle" ] [ text "Ces informations servent à retrouver l'appareil dans le carnet." ]
             , case photoUrl of
                 Just url ->
-                    img [ class "aircraft-photo-lg", src url, alt "" ] []
+                    img [ class "aircraft-photo-lg", src (MediaUrl.absoluteUrl baseUrl url), alt "" ] []
 
                 Nothing ->
                     text ""
@@ -118,11 +120,11 @@ field labelText current onChange =
         ]
 
 
-mark : Aircraft -> Html msg
-mark aircraft =
+mark : String -> Aircraft -> Html msg
+mark baseUrl aircraft =
     case aircraft.photoUrl of
         Just url ->
-            img [ class "aircraft-photo", src url, alt "" ] []
+            img [ class "aircraft-photo", src (MediaUrl.absoluteUrl baseUrl url), alt "" ] []
 
         Nothing ->
             span [ class "aircraft-mark" ] [ text (String.left 1 aircraft.registration) ]

@@ -6,6 +6,7 @@ import Expect
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
 import LogbookFormat
+import MediaUrl
 import Outbox
 import Stats
 import Test exposing (Test, describe, test)
@@ -54,6 +55,16 @@ all =
             , test "zero report totals stay blank" <|
                 \_ ->
                     Expect.equal "" (LogbookFormat.showReportTime "0:00")
+            ]
+        , describe "MediaUrl"
+            [ test "aircraft photos use the API host" <|
+                \_ ->
+                    Expect.equal "https://cloudy.fr/media/upload/PXL_20220105_103509212.jpg"
+                        (MediaUrl.absoluteUrl "https://cloudy.fr/api/v1" "/media/upload/PXL_20220105_103509212.jpg")
+            , test "absolute photo URLs stay unchanged" <|
+                \_ ->
+                    Expect.equal "https://cloudy.fr/media/upload/scan.jpg"
+                        (MediaUrl.absoluteUrl "https://cloudy.fr/api/v1" "https://cloudy.fr/media/upload/scan.jpg")
             ]
         , describe "Outbox"
             [ test "create success updates matching log" <|

@@ -15,6 +15,7 @@ import Html.Attributes exposing (alt, checked, class, disabled, name, placeholde
 import Html.Events exposing (on, onBlur, onClick, onInput)
 import Json.Decode as Decode
 import LogHelpers
+import MediaUrl
 import TimeFormat
 
 
@@ -293,32 +294,10 @@ fileThumb : String -> AttachedFile -> Html msg
 fileThumb baseUrl file =
     img
         [ class "file-thumb"
-        , src (fileUrl baseUrl file.url)
+        , src (MediaUrl.absoluteUrl baseUrl file.url)
         , alt "Photo du vol"
         ]
         []
-
-
-fileUrl : String -> String -> String
-fileUrl baseUrl url =
-    if String.startsWith "https://" url || String.startsWith "http://" url then
-        url
-
-    else if String.startsWith "/" url then
-        origin baseUrl ++ url
-
-    else
-        origin baseUrl ++ "/" ++ url
-
-
-origin : String -> String
-origin baseUrl =
-    case String.split "/" baseUrl of
-        scheme :: "" :: host :: _ ->
-            scheme ++ "//" ++ host
-
-        _ ->
-            baseUrl
 
 
 dateField : String -> DateInput msg -> Html msg
