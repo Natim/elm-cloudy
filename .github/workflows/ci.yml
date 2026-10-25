@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  elm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: elm-tooling/setup-elm@v3
+      - run: elm-format --validate src/
+      - run: elm make src/Cloudy.elm --output=/dev/null
+      - run: cd tests && elm-test src/Tests.elm

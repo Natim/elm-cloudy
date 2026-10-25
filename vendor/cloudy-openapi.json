@@ -1,0 +1,1526 @@
+{
+  "components": {
+    "schemas": {
+      "Logbook": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "time_format": {
+            "type": "integer"
+          },
+          "height_format": {
+            "type": "integer"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LogRead_plane_dgac": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "function_on_board": {
+            "type": "string"
+          },
+          "flight_nature": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "integer"
+          },
+          "crew_night_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "integer"
+          },
+          "instrument_pilot_minutes": {
+            "type": "integer"
+          },
+          "simulator_minutes": {
+            "type": "integer"
+          },
+          "ifr": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_plane_dgac": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "function_on_board": {
+            "type": "string"
+          },
+          "flight_nature": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "integer"
+          },
+          "crew_night_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "integer"
+          },
+          "instrument_pilot_minutes": {
+            "type": "integer"
+          },
+          "simulator_minutes": {
+            "type": "integer"
+          },
+          "ifr": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_glider_dgac": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "instructor_minutes": {
+            "type": "integer"
+          },
+          "function_on_board": {
+            "type": "integer"
+          },
+          "flight_nature": {
+            "type": "integer"
+          },
+          "lmode": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_glider_dgac": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "instructor_minutes": {
+            "type": "integer"
+          },
+          "function_on_board": {
+            "type": "integer"
+          },
+          "flight_nature": {
+            "type": "integer"
+          },
+          "lmode": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_plane_fcl1080": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "departure_place": {
+            "type": "string"
+          },
+          "departure_time": {
+            "type": "string"
+          },
+          "arrival_place": {
+            "type": "string"
+          },
+          "arrival_time": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "single_pilot_se": {
+            "type": "integer"
+          },
+          "single_pilot_me": {
+            "type": "integer"
+          },
+          "multi_pilot_time": {
+            "type": "integer"
+          },
+          "total_time_flight": {
+            "type": "integer"
+          },
+          "pilot_in_command_name": {
+            "type": "string"
+          },
+          "take_off_day": {
+            "type": "integer"
+          },
+          "take_off_night": {
+            "type": "integer"
+          },
+          "landing_day": {
+            "type": "integer"
+          },
+          "landing_night": {
+            "type": "integer"
+          },
+          "op_time_night": {
+            "type": "integer"
+          },
+          "op_time_ifr": {
+            "type": "integer"
+          },
+          "pilot_time_in_cmd": {
+            "type": "integer"
+          },
+          "co_pilot_minutes": {
+            "type": "integer"
+          },
+          "pilot_time_dual": {
+            "type": "integer"
+          },
+          "pilot_time_inst": {
+            "type": "integer"
+          },
+          "synthetic_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic_type": {
+            "type": "string"
+          },
+          "synthetic_time": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_plane_fcl1080": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "departure_place": {
+            "type": "string"
+          },
+          "departure_time": {
+            "type": "string"
+          },
+          "arrival_place": {
+            "type": "string"
+          },
+          "arrival_time": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "single_pilot_se": {
+            "type": "integer"
+          },
+          "single_pilot_me": {
+            "type": "integer"
+          },
+          "multi_pilot_time": {
+            "type": "integer"
+          },
+          "total_time_flight": {
+            "type": "integer"
+          },
+          "pilot_in_command_name": {
+            "type": "string"
+          },
+          "take_off_day": {
+            "type": "integer"
+          },
+          "take_off_night": {
+            "type": "integer"
+          },
+          "landing_day": {
+            "type": "integer"
+          },
+          "landing_night": {
+            "type": "integer"
+          },
+          "op_time_night": {
+            "type": "integer"
+          },
+          "op_time_ifr": {
+            "type": "integer"
+          },
+          "pilot_time_in_cmd": {
+            "type": "integer"
+          },
+          "co_pilot_minutes": {
+            "type": "integer"
+          },
+          "pilot_time_dual": {
+            "type": "integer"
+          },
+          "pilot_time_inst": {
+            "type": "integer"
+          },
+          "synthetic_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic_type": {
+            "type": "string"
+          },
+          "synthetic_time": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_helicopter_dgac": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "function_on_board": {
+            "type": "string"
+          },
+          "flight_nature": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "integer"
+          },
+          "crew_night_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "integer"
+          },
+          "instrument_pilot_minutes": {
+            "type": "integer"
+          },
+          "simulator_minutes": {
+            "type": "integer"
+          },
+          "ifr": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_helicopter_dgac": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "function_on_board": {
+            "type": "string"
+          },
+          "flight_nature": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "integer"
+          },
+          "crew_night_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "integer"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "integer"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "integer"
+          },
+          "instrument_pilot_minutes": {
+            "type": "integer"
+          },
+          "simulator_minutes": {
+            "type": "integer"
+          },
+          "ifr": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_ulm_ffplum": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_ulm_ffplum": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "aircraft_type": {
+            "type": "string"
+          },
+          "aircraft_registration": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_balloon_dgac": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "ballon_type": {
+            "type": "string"
+          },
+          "ballon_imma": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LogWrite_balloon_dgac": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "ballon_type": {
+            "type": "string"
+          },
+          "ballon_imma": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "integer"
+          },
+          "pilot_in_command_minutes": {
+            "type": "integer"
+          },
+          "observations": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "departure_airport": {
+            "type": "string"
+          },
+          "arrival_airport": {
+            "type": "string"
+          },
+          "passengers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "LogRead_parachute_cloudy": {
+        "type": "object",
+        "properties": {
+          "logbook_id": {
+            "type": "integer"
+          },
+          "id": {
+            "type": "integer"
+          },
+          "visible": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "aircraft": {
+            "type": "string"
+          },
+          "altitude": {
+            "type": "integer"
+          },
+          "altitude_open": {
+            "type": "integer"
+          },
+          "canopy": {
+            "type": "string"
+          },
+          "bag": {
+            "type": "string"
+          },
+          "perf_exercise": {
+            "type": "string"
+          },
+          "freefall_training": {
+            "type": "string"
+          },
+          "canopy_piloting": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "falling_time": {
+            "type": "integer"
+          }
+        }
+      },
+      "LogWrite_parachute_cloudy": {
+        "type": "object",
+        "properties": {
+          "flight_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "optional_filter": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "aircraft": {
+            "type": "string"
+          },
+          "altitude": {
+            "type": "integer"
+          },
+          "altitude_open": {
+            "type": "integer"
+          },
+          "canopy": {
+            "type": "string"
+          },
+          "bag": {
+            "type": "string"
+          },
+          "perf_exercise": {
+            "type": "string"
+          },
+          "freefall_training": {
+            "type": "string"
+          },
+          "canopy_piloting": {
+            "type": "string"
+          },
+          "comments": {
+            "type": "string"
+          },
+          "falling_time": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "flight_date",
+          "optional_filter"
+        ]
+      },
+      "Report_plane_dgac": {
+        "type": "object",
+        "properties": {
+          "ifr": {
+            "type": "integer"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "string"
+          },
+          "crew_night_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "string"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "string"
+          },
+          "instrument_pilot_minutes": {
+            "type": "string"
+          },
+          "simulator_minutes": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_plane_fcl1080": {
+        "type": "object",
+        "properties": {
+          "take_off_day": {
+            "type": "integer"
+          },
+          "take_off_night": {
+            "type": "integer"
+          },
+          "landing_day": {
+            "type": "integer"
+          },
+          "landing_night": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "single_pilot_time": {
+            "type": "string"
+          },
+          "multi_pilot_time": {
+            "type": "string"
+          },
+          "total_time_flight": {
+            "type": "string"
+          },
+          "op_time_night": {
+            "type": "string"
+          },
+          "op_time_ifr": {
+            "type": "string"
+          },
+          "pilot_time_in_cmd": {
+            "type": "string"
+          },
+          "co_pilot_minutes": {
+            "type": "string"
+          },
+          "pilot_time_dual": {
+            "type": "string"
+          },
+          "pilot_time_inst": {
+            "type": "string"
+          },
+          "synthetic_time": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_helicopter_dgac": {
+        "type": "object",
+        "properties": {
+          "ifr": {
+            "type": "integer"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "string"
+          },
+          "crew_night_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "string"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "string"
+          },
+          "instrument_pilot_minutes": {
+            "type": "string"
+          },
+          "simulator_minutes": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_ulm_ffplum": {
+        "type": "object",
+        "properties": {
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "dual_minutes": {
+            "type": "string"
+          },
+          "pilot_in_command_minutes": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_parachute_cloudy": {
+        "type": "object",
+        "properties": {
+          "jump_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_glider_dgac": {
+        "type": "object",
+        "properties": {
+          "ifr": {
+            "type": "integer"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "string"
+          },
+          "crew_night_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "string"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "string"
+          },
+          "instrument_pilot_minutes": {
+            "type": "string"
+          },
+          "simulator_minutes": {
+            "type": "string"
+          }
+        }
+      },
+      "Report_balloon_dgac": {
+        "type": "object",
+        "properties": {
+          "ifr": {
+            "type": "integer"
+          },
+          "takeoff_count": {
+            "type": "integer"
+          },
+          "landing_count": {
+            "type": "integer"
+          },
+          "log_id": {
+            "type": "string"
+          },
+          "crew_day_minutes": {
+            "type": "string"
+          },
+          "crew_night_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "single_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_day_co_pilot_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_dual_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_captain_minutes": {
+            "type": "string"
+          },
+          "multi_engine_night_co_pilot_minutes": {
+            "type": "string"
+          },
+          "instrument_day_dual_minutes": {
+            "type": "string"
+          },
+          "instrument_pilot_minutes": {
+            "type": "string"
+          },
+          "simulator_minutes": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "categories": [
+    "plane_dgac",
+    "glider_dgac",
+    "plane_fcl1080",
+    "helicopter_dgac",
+    "ulm_ffplum",
+    "balloon_dgac",
+    "parachute_cloudy"
+  ]
+}

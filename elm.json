@@ -1,0 +1,34 @@
+{
+    "type": "package",
+    "name": "Natim/elm-cloudy",
+    "summary": "Elm client for the Cloudy logbook REST API (/api/v1)",
+    "license": "AGPL-3.0",
+    "version": "1.0.0",
+    "exposed-modules": [
+        "Cloudy",
+        "Cloudy.Client",
+        "Cloudy.Request",
+        "Cloudy.Error",
+        "Cloudy.Data",
+        "Cloudy.Data.Logbook",
+        "Cloudy.Data.LogbookCategory",
+        "Cloudy.Data.Log",
+        "Cloudy.Data.Report",
+        "Cloudy.Data.Log.PlaneDgac",
+        "Cloudy.Data.Log.PlaneFcl1080",
+        "Cloudy.Data.Log.GliderDgac",
+        "Cloudy.Data.Log.UlmFfplum",
+        "Cloudy.Data.Log.BalloonDgac",
+        "Cloudy.Data.Log.ParachuteCloudy"
+    ],
+    "elm-version": "0.19.0 <= v < 0.20.0",
+    "dependencies": {
+        "elm/core": "1.0.5 <= v < 2.0.0",
+        "elm/http": "2.0.0 <= v < 3.0.0",
+        "elm/json": "1.1.4 <= v < 2.0.0",
+        "elm/url": "1.0.0 <= v < 2.0.0"
+    },
+    "test-dependencies": {
+        "elm-explorations/test": "2.2.0 <= v < 3.0.0"
+    }
+}
