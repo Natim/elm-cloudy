@@ -1,4 +1,4 @@
-const CACHE = "elm-cloudy-pwa-v2";
+const CACHE = "elm-cloudy-pwa-v3";
 const ASSETS = [
   "/elm-cloudy/",
   "/elm-cloudy/index.html",
@@ -36,17 +36,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        return cached;
-      }
-      return fetch(event.request).then((response) => {
+    fetch(event.request)
+      .then((response) => {
         if (response.ok && response.type === "basic") {
           const copy = response.clone();
           caches.open(CACHE).then((cache) => cache.put(event.request, copy));
         }
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(event.request))
   );
 });

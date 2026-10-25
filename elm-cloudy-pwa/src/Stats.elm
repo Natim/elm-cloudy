@@ -406,7 +406,7 @@ registration entry =
             "Sans immatriculation"
 
         value ->
-            value
+            String.toUpper value
 
 
 aircraftType : LogEntry -> String

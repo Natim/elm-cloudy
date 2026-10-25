@@ -105,7 +105,6 @@ type Msg
     | DateTextChanged String
     | DatePicked String
     | DateTextBlurred
-    | PickLogFile
     | GotLogFile File.File
     | GotLogFileUpload (Result Http.Error AttachedFile)
     | SaveEditor

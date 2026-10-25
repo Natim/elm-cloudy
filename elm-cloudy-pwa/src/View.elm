@@ -1,5 +1,6 @@
 module View exposing (view)
 
+import Cloudy.Data.Aircraft as AircraftData
 import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
 import Dict
@@ -7,80 +8,119 @@ import Html exposing (Html, button, div, h1, h2, p, text)
 import Html.Attributes exposing (class, type_)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Decode
-import LocalLog exposing (SyncStatus(..))
+import LocalLog
 import Model exposing (Model, Msg(..))
 import Route exposing (Route(..))
+import Session exposing (Session)
 import Stats
 import View.Aircraft as AircraftView
 import View.Editor as Editor
 import View.Logbook as Logbook
+import View.Shell as Shell exposing (Section(..))
 import View.Stats as StatsView
 
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ statusBar model
-        , case model.route of
-            Login ->
-                case model.session of
-                    Just _ ->
-                        logbooksView model
+    case model.session of
+        Nothing ->
+            loginView model
 
-                    Nothing ->
-                        loginView model
-
-            Logbooks ->
-                logbooksView model
-
-            Logs id ->
-                logsView model id
-
-            Dashboard ->
-                dashboardView model
-
-            Aircraft id ->
-                div [ class "shell" ]
-                    [ AircraftView.viewList
-                        (Dict.get (String.fromInt id) model.aircraft |> Maybe.withDefault [])
-                        (StartNewAircraft id)
-                        (\plane -> OpenAircraftEditor id plane.id)
+        Just session ->
+            Shell.view (shellConfig model session)
+                (div [ class "page" ]
+                    [ page model
+                    , maybeError model.error
                     ]
-
-            AircraftNew id ->
-                aircraftEditorView model id
-
-            AircraftEdit id _ ->
-                aircraftEditorView model id
-
-            EditorNew id ->
-                editorRoute model id
-
-            EditorEdit id _ ->
-                editorRoute model id
-        ]
+                )
 
 
-statusBar : Model -> Html Msg
-statusBar model =
-    p [ class "status-bar" ]
-        [ text <|
-            if model.online then
-                if List.isEmpty model.outbox then
-                    "En ligne"
+page : Model -> Html Msg
+page model =
+    case model.route of
+        Login ->
+            dashboardView model
 
-                else
-                    String.fromInt (List.length model.outbox) ++ " opération(s) en attente"
+        Dashboard ->
+            dashboardView model
 
-            else
-                "Hors ligne"
-        ]
+        Logbooks ->
+            logbooksView model
+
+        Logs id ->
+            logsView model id
+
+        Aircraft id ->
+            aircraftList model id
+
+        AircraftNew id ->
+            aircraftEditorView model id
+
+        AircraftEdit id _ ->
+            aircraftEditorView model id
+
+        EditorNew id ->
+            editorRoute model id
+
+        EditorEdit id _ ->
+            editorRoute model id
+
+
+shellConfig : Model -> Session -> Shell.Config Msg
+shellConfig model session =
+    { logbooks = model.logbooks
+    , selectedId = model.selectedLogbookId
+    , email = session.email
+    , online = model.online
+    , pending = List.length model.outbox
+    , open = model.navOpen
+    , section = sectionOf model.route
+    , onToggle = ToggleNav
+    , onClose = CloseNav
+    , onSelectLogbook = MenuLogbookChanged
+    , onDashboard = OpenDashboard
+    , onFlights = OpenFlights
+    , onLogbooks = OpenLogbooks
+    , onAircraft = OpenAircraft
+    , onLogout = Logout
+    }
+
+
+sectionOf : Route -> Section
+sectionOf route =
+    case route of
+        Dashboard ->
+            SecDashboard
+
+        Login ->
+            SecDashboard
+
+        Logbooks ->
+            SecLogbooks
+
+        Logs _ ->
+            SecFlights
+
+        EditorNew _ ->
+            SecFlights
+
+        EditorEdit _ _ ->
+            SecFlights
+
+        Aircraft _ ->
+            SecAircraft
+
+        AircraftNew _ ->
+            SecAircraft
+
+        AircraftEdit _ _ ->
+            SecAircraft
 
 
 loginView : Model -> Html Msg
 loginView model =
-    div [ class "shell" ]
-        [ div [ class "card" ]
+    div [ class "login-screen" ]
+        [ div [ class "card login-card" ]
             [ h1 [] [ text "Connexion" ]
             , p [ class "subtitle" ] [ text "Accédez à votre carnet de vol Cloudy." ]
             , div [ class "field" ]
@@ -107,34 +147,35 @@ loginView model =
                     , Html.input [ Html.Attributes.value model.loginForm.baseUrl, Html.Events.onInput LoginBaseUrlChanged ] []
                     ]
                 ]
-            , button [ class "btn", onClick LoginSubmitted, Html.Attributes.disabled model.busy ] [ text "Se connecter" ]
+            , button [ type_ "button", class "btn", onClick LoginSubmitted, Html.Attributes.disabled model.busy ] [ text "Se connecter" ]
             , maybeError model.error
             , p [ class "hint" ]
-                [ text "info — Les vols saisis hors ligne seront synchronisés au retour du réseau." ]
+                [ text "Les vols saisis hors ligne seront synchronisés au retour du réseau." ]
             ]
         ]
 
 
 logbooksView : Model -> Html Msg
 logbooksView model =
-    div [ class "shell" ]
-        [ div [ class "topbar" ]
-            [ h2 [] [ text "Carnets" ]
-            , button [ class "link-btn", onClick Logout ] [ text "Déconnexion" ]
+    div []
+        [ div [ class "page-head" ]
+            [ div []
+                [ h2 [ class "page-title" ] [ text "Carnets" ]
+                , p [ class "subtitle" ] [ text "Choisissez un carnet pour consulter les vols." ]
+                ]
+            , div [ class "page-actions" ]
+                [ button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ] ]
             ]
         , if not model.storageReady || (model.busy && List.isEmpty model.logbooks) then
             p [] [ text "Chargement…" ]
 
           else if List.isEmpty model.logbooks then
             div [ class "card" ]
-                [ p [] [ text "Aucun carnet en cache. Tirez pour actualiser une fois en ligne." ]
-                , button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
-                ]
+                [ p [] [ text "Aucun carnet en cache. Actualisez une fois en ligne." ] ]
 
           else
             div [ class "list" ]
                 (List.map (logbookItem model) model.logbooks)
-        , maybeError model.error
         ]
 
 
@@ -146,10 +187,10 @@ logbookItem model book =
                 |> Maybe.map LocalLog.pendingCount
                 |> Maybe.withDefault 0
     in
-    button [ class "list-item", onClick (SelectLogbook book.id) ]
+    button [ type_ "button", class "list-item", onClick (SelectLogbook book.id) ]
         [ Html.strong [] [ text book.name ]
         , Html.span []
-            [ text (LogbookCategory.toString book.category)
+            [ text (Shell.categoryLabel book.category)
             , if pending > 0 then
                 Html.span [ class "badge badge-pending" ] [ text (String.fromInt pending ++ " en attente") ]
 
@@ -178,58 +219,70 @@ logsView model logbookId =
                         |> Maybe.withDefault PlaneDgac
                     )
     in
-    div [ class "shell shell-logbook" ]
-        [ div [ class "topbar" ]
-            [ button [ class "link-btn", onClick BackToLogbooks ] [ text "←" ]
-            , h2 []
-                [ text
-                    (book
-                        |> Maybe.map .name
-                        |> Maybe.withDefault ("Carnet " ++ String.fromInt logbookId)
-                    )
+    div []
+        [ div [ class "page-head" ]
+            [ div []
+                [ h2 [ class "page-title" ]
+                    [ text
+                        (book
+                            |> Maybe.map .name
+                            |> Maybe.withDefault ("Carnet " ++ String.fromInt logbookId)
+                        )
+                    ]
+                , p [ class "subtitle" ] [ text "Vols enregistrés dans ce carnet." ]
                 ]
+            , div [ class "page-actions" ]
+                [ button [ type_ "button", class "btn", onClick (StartNewLog logbookId) ] [ text "+ Ajouter un vol" ] ]
             ]
-        , maybeError model.error
         , if List.isEmpty logs then
             div [ class "card" ]
                 [ p [] [ text "Aucun vol en cache." ] ]
 
           else
             Logbook.view category logs (Dict.get (String.fromInt logbookId) model.reports) (\clientId -> EditLog logbookId clientId)
-        , div [ class "fab" ]
-            [ button [ class "btn", onClick (StartNewLog logbookId) ] [ text "Ajouter un vol" ]
-            ]
         ]
 
 
 dashboardView : Model -> Html Msg
 dashboardView model =
-    let
-        logbookId =
-            model.selectedLogbookId |> Maybe.withDefault 0
+    case activeBook model of
+        Nothing ->
+            div [ class "card" ]
+                [ h2 [ class "page-title" ] [ text "Tableau de bord" ]
+                , p [] [ text "Aucun carnet pour le moment." ]
+                , button [ type_ "button", class "btn btn-secondary", onClick RefreshLogbooks ] [ text "Actualiser" ]
+                ]
 
-        logs =
-            Dict.get (String.fromInt logbookId) model.logs |> Maybe.withDefault []
-    in
-    div [ class "shell" ]
-        [ StatsView.view
-            { title = "Tableau de bord"
-            , subtitle = "Activité du carnet sélectionné."
-            , summary = Stats.summarize logs (Dict.get (String.fromInt logbookId) model.reports)
-            , truncated = List.length logs >= 100
-            , onNewFlight = StartNewLog logbookId
-            , onAircraft = OpenAircraft
-            }
-        ]
+        Just book ->
+            let
+                logs =
+                    Dict.get (String.fromInt book.id) model.logs |> Maybe.withDefault []
+
+                email =
+                    model.session |> Maybe.map .email |> Maybe.withDefault ""
+            in
+            StatsView.view
+                { title = "Bonjour " ++ Shell.displayName email
+                , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
+                , summary = Stats.summarize logs (Dict.get (String.fromInt book.id) model.reports)
+                , truncated = List.length logs >= 100
+                , onNewFlight = StartNewLog book.id
+                , onAircraft = OpenAircraft
+                }
+
+
+aircraftList : Model -> Int -> Html Msg
+aircraftList model logbookId =
+    AircraftView.viewList (aircraftOf model logbookId) (StartNewAircraft logbookId) (\plane -> OpenAircraftEditor logbookId plane.id)
 
 
 aircraftEditorView : Model -> Int -> Html Msg
 aircraftEditorView model logbookId =
     case model.aircraftEditor of
         Just editor ->
-            div [ class "shell" ]
-                [ AircraftView.viewForm editor
-                    Nothing
+            if editor.logbookId == logbookId then
+                AircraftView.viewForm editor
+                    (photoOf model editor)
                     model.busy
                     { onRegistration = AircraftRegistrationChanged
                     , onType = AircraftTypeChanged
@@ -239,15 +292,12 @@ aircraftEditorView model logbookId =
                     , onDelete = DeleteAircraft
                     , onCancel = OpenAircraft
                     }
-                ]
+
+            else
+                p [] [ text "Chargement…" ]
 
         Nothing ->
-            div [ class "shell" ]
-                [ AircraftView.viewList
-                    (Dict.get (String.fromInt logbookId) model.aircraft |> Maybe.withDefault [])
-                    (StartNewAircraft logbookId)
-                    (\plane -> OpenAircraftEditor logbookId plane.id)
-                ]
+            p [] [ text "Chargement…" ]
 
 
 editorRoute : Model -> Int -> Html Msg
@@ -255,38 +305,68 @@ editorRoute model logbookId =
     case model.editor of
         Just editor ->
             if editor.logbookId == logbookId then
-                div []
-                    [ maybeError model.error
-                    , Editor.view editor.localLog.entry
-                        { draft = editor.dateDraft
-                        , onText = DateTextChanged
-                        , onPicked = DatePicked
-                        , onBlur = DateTextBlurred
-                        }
-                        { baseUrl =
-                            model.session
-                                |> Maybe.map .baseUrl
-                                |> Maybe.withDefault "https://cloudy.fr/api/v1"
-                        , uploading = editor.uploadingFile
-                        , onPick = PickLogFile
-                        }
-                        EditorChanged
-                        SaveEditor
-                        CancelEditor
-                    ]
+                Editor.view editor.localLog.entry
+                    { draft = editor.dateDraft
+                    , onText = DateTextChanged
+                    , onPicked = DatePicked
+                    , onBlur = DateTextBlurred
+                    }
+                    { baseUrl =
+                        model.session
+                            |> Maybe.map .baseUrl
+                            |> Maybe.withDefault "https://cloudy.fr/api/v1"
+                    , uploading = editor.uploadingFile
+                    , onFile = GotLogFile
+                    }
+                    EditorChanged
+                    SaveEditor
+                    CancelEditor
 
             else
-                p [ class "shell" ] [ text "Chargement…" ]
+                p [] [ text "Chargement…" ]
 
         Nothing ->
-            p [ class "shell" ] [ text "Chargement…" ]
+            p [] [ text "Chargement…" ]
+
+
+activeBook : Model -> Maybe Logbook
+activeBook model =
+    let
+        id =
+            case Route.logbookId model.route of
+                Just routeId ->
+                    Just routeId
+
+                Nothing ->
+                    model.selectedLogbookId
+    in
+    Maybe.andThen (findBook model) id
 
 
 findBook : Model -> Int -> Maybe Logbook
 findBook model id =
     model.logbooks
-        |> List.filter (\b -> b.id == id)
+        |> List.filter (\book -> book.id == id)
         |> List.head
+
+
+aircraftOf : Model -> Int -> List AircraftData.Aircraft
+aircraftOf model logbookId =
+    Dict.get (String.fromInt logbookId) model.aircraft
+        |> Maybe.withDefault []
+        |> List.sortBy (\plane -> String.toUpper plane.registration)
+
+
+photoOf : Model -> Model.AircraftEditor -> Maybe String
+photoOf model editor =
+    editor.aircraftId
+        |> Maybe.andThen
+            (\aircraftId ->
+                aircraftOf model editor.logbookId
+                    |> List.filter (\plane -> plane.id == aircraftId)
+                    |> List.head
+            )
+        |> Maybe.andThen .photoUrl
 
 
 maybeError : Maybe String -> Html Msg

@@ -8,9 +8,11 @@ import Cloudy.Data.Log.ParachuteCloudy as ParachuteCloudy
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
-import Html exposing (Html, button, div, h1, img, input, option, select, text, textarea)
+import File exposing (File)
+import Html exposing (Html, button, div, h1, img, input, option, p, select, text, textarea)
 import Html.Attributes exposing (alt, checked, class, disabled, name, placeholder, selected, src, type_, value)
-import Html.Events exposing (onBlur, onClick, onInput)
+import Html.Events exposing (on, onBlur, onClick, onInput)
+import Json.Decode as Decode
 import LogHelpers
 import TimeFormat
 
@@ -26,7 +28,7 @@ type alias DateInput msg =
 type alias FilesInput msg =
     { baseUrl : String
     , uploading : Bool
-    , onPick : msg
+    , onFile : File -> msg
     }
 
 
@@ -35,8 +37,8 @@ view entry dates filesInput onChange onSave onCancel =
     div [ class "editor" ]
         [ div [ class "card" ]
             [ h1 [] [ text "Vol" ]
-            , body entry dates onChange
             , filesField filesInput (LogHelpers.files entry)
+            , body entry dates onChange
             , div [ class "form-actions" ]
                 [ button [ type_ "button", class "btn", onClick onSave ] [ text "Enregistrer" ]
                 , button [ type_ "button", class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
@@ -192,22 +194,21 @@ parachuteForm log dates onChange =
 filesField : FilesInput msg -> List AttachedFile -> Html msg
 filesField filesInput attached =
     div [ class "field" ]
-        [ Html.label [] [ text "Photos" ]
+        [ Html.label [] [ text "Photo" ]
         , div [ class "file-list" ] (List.map (fileThumb filesInput.baseUrl) attached)
-        , button
-            [ type_ "button"
-            , class "btn btn-secondary"
+        , input
+            [ type_ "file"
+            , class "file-input"
+            , Html.Attributes.accept "image/*"
             , disabled filesInput.uploading
-            , onClick filesInput.onPick
+            , on "change" (Decode.map filesInput.onFile (Decode.at [ "target", "files", "0" ] File.decoder))
             ]
-            [ text
-                (if filesInput.uploading then
-                    "Envoi…"
+            []
+        , if filesInput.uploading then
+            p [ class "hint" ] [ text "Envoi…" ]
 
-                 else
-                    "Ajouter une photo"
-                )
-            ]
+          else
+            text ""
         ]
 
 

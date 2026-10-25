@@ -84,11 +84,11 @@ view config content =
                     [ text (statusText config) ]
                 , div [ class "user" ]
                     [ span [ class "avatar" ] [ text (initials config.email) ]
-                    , span [ class "user-name" ]
-                        [ text (displayName config.email)
+                    , span [ class "user-meta" ]
+                        [ span [ class "user-name" ] [ text (displayName config.email) ]
                         , span [ class "user-role" ] [ text "Pilote" ]
+                        , button [ type_ "button", class "link-btn", onClick config.onLogout ] [ text "Déconnexion" ]
                         ]
-                    , button [ type_ "button", class "link-btn", onClick config.onLogout ] [ text "Déconnexion" ]
                     ]
                 ]
             ]
@@ -141,23 +141,23 @@ bookOption selectedId book =
 navButton : Config msg -> Section -> msg -> Html msg -> String -> Html msg
 navButton config section msg icon labelText =
     button
-        [ type_ "button"
-        , class
+        ([ type_ "button"
+         , class
             (if config.section == section then
                 "nav-item active"
 
              else
                 "nav-item"
             )
-        , attribute "aria-current"
-            (if config.section == section then
-                "page"
+         , onClick msg
+         ]
+            ++ (if config.section == section then
+                    [ attribute "aria-current" "page" ]
 
-             else
-                "false"
-            )
-        , onClick msg
-        ]
+                else
+                    []
+               )
+        )
         [ icon, text labelText ]
 
 

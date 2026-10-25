@@ -12,7 +12,6 @@ import Cloudy.Data.LogbookCategory as LogbookCategory
 import Cloudy.Request as Request
 import Dict
 import File
-import File.Select
 import Http
 import Json.Decode
 import Json.Encode as Encode
@@ -478,9 +477,6 @@ update msg model =
 
                 Just editor ->
                     ( { model | editor = Just { editor | dateDraft = Nothing } }, Cmd.none )
-
-        PickLogFile ->
-            ( model, File.Select.file [ "image/*" ] GotLogFile )
 
         GotLogFile file ->
             case ( model.session, model.editor ) of
@@ -1003,7 +999,38 @@ enterRoute model route =
             else
                 Cmd.none
 
-        _ ->
+        AircraftNew id ->
+            case model.aircraftEditor of
+                Just editor ->
+                    if editor.logbookId == id && editor.aircraftId == Nothing then
+                        Cmd.none
+
+                    else
+                        cmdMsg (StartNewAircraft id)
+
+                Nothing ->
+                    cmdMsg (StartNewAircraft id)
+
+        AircraftEdit id aircraftId ->
+            case model.aircraftEditor of
+                Just editor ->
+                    if editor.logbookId == id && editor.aircraftId == Just aircraftId then
+                        Cmd.none
+
+                    else
+                        cmdMsg (OpenAircraftEditor id aircraftId)
+
+                Nothing ->
+                    cmdMsg (OpenAircraftEditor id aircraftId)
+
+        Login ->
+            if model.session /= Nothing then
+                Nav.pushUrl model.key (Route.toPath Dashboard)
+
+            else
+                Cmd.none
+
+        Logbooks ->
             Cmd.none
 
 
@@ -1074,7 +1101,12 @@ editorFrom logbookId plane =
 
 updateAircraft : (AircraftEditor -> AircraftEditor) -> Model -> ( Model, Cmd Msg )
 updateAircraft change model =
-    ( { model | aircraftEditor = Maybe.map change model.aircraftEditor }, Cmd.none )
+    ( { model
+        | aircraftEditor = Maybe.map (\editor -> change { editor | confirmingDelete = False }) model.aircraftEditor
+        , error = Nothing
+      }
+    , Cmd.none
+    )
 
 
 optionalText : String -> Maybe String

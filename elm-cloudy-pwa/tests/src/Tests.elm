@@ -1,11 +1,13 @@
 module Tests exposing (all)
 
+import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.LogbookCategory as LogbookCategory
 import Expect
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
 import LogbookFormat
 import Outbox
+import Stats
 import Test exposing (Test, describe, test)
 import TimeFormat
 
@@ -87,4 +89,58 @@ all =
                         []
                         (Outbox.dropHead [ Outbox.DeleteOp { logbookId = 1, serverId = 2 } ])
             ]
+        , describe "Stats"
+            [ test "block time ignores instrument and groups by registration" <|
+                \_ ->
+                    let
+                        summary =
+                            Stats.summarize [ sample 60 "F-GAAA", sample 30 "f-gaaa", sample 15 "F-GBBB" ] Nothing
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal 3 summary.flights
+                        , \_ -> Expect.equal (Just 105) summary.minutes
+                        , \_ -> Expect.equal (Just 3) summary.takeoffs
+                        , \_ ->
+                            case summary.byAircraft of
+                                first :: second :: [] ->
+                                    Expect.all
+                                        [ \_ -> Expect.equal "F-GAAA" first.registration
+                                        , \_ -> Expect.equal 2 first.flights
+                                        , \_ -> Expect.equal 90 first.minutes
+                                        , \_ -> Expect.equal "F-GBBB" second.registration
+                                        ]
+                                        ()
+
+                                _ ->
+                                    Expect.fail "expected two aircraft"
+                        ]
+                        summary
+            ]
         ]
+
+
+sample : Int -> String -> LocalLog
+sample minutes registration =
+    let
+        entry =
+            case LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 "2020-01-01T12:00:00" of
+                PlaneDgacEntry log ->
+                    PlaneDgacEntry
+                        { log
+                            | crew_day_minutes = minutes
+                            , aircraft_registration = registration
+                            , aircraft_type = "DR400"
+                            , takeoff_count = 1
+                            , landing_count = 1
+                            , instrument_pilot_minutes = 15
+                        }
+
+                other ->
+                    other
+    in
+    { clientId = "c-" ++ registration
+    , serverId = Just 1
+    , syncStatus = Synced
+    , category = LogbookCategory.PlaneDgac
+    , entry = entry
+    }
