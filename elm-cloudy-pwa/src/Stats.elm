@@ -1,17 +1,15 @@
 module Stats exposing (AircraftTotal, Summary, summarize)
 
 import Cloudy.Data.Log exposing (LogEntry(..))
-import Cloudy.Data.Report as Report exposing (ReportEntry(..))
-import Cloudy.Data.Report.BalloonDgac as BalloonReport
-import Cloudy.Data.Report.GliderDgac as GliderReport
-import Cloudy.Data.Report.ParachuteCloudy as ParachuteReport
-import Cloudy.Data.Report.PlaneDgac as PlaneReport
-import Cloudy.Data.Report.PlaneFcl1080 as FclReport
-import Cloudy.Data.Report.UlmFfplum as UlmReport
+import Cloudy.Data.Log.BalloonDgac as BalloonDgac
+import Cloudy.Data.Log.GliderDgac as GliderDgac
+import Cloudy.Data.Log.ParachuteCloudy as ParachuteCloudy
+import Cloudy.Data.Log.PlaneDgac as PlaneDgac
+import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
+import Cloudy.Data.Log.UlmFfplum as UlmFfplum
 import Dict exposing (Dict)
 import LocalLog exposing (LocalLog)
 import LogbookFormat
-import TimeFormat
 
 
 type alias Summary =
@@ -19,7 +17,6 @@ type alias Summary =
     , minutes : Maybe Int
     , takeoffs : Maybe Int
     , landings : Maybe Int
-    , fromReport : Bool
     , details : List ( String, String )
     , byAircraft : List AircraftTotal
     }
@@ -32,40 +29,19 @@ type alias AircraftTotal =
     }
 
 
-type alias Official =
-    { minutes : Maybe Int
-    , takeoffs : Maybe Int
-    , landings : Maybe Int
-    }
-
-
-summarize : List LocalLog -> Maybe ReportEntry -> Summary
-summarize logs report =
+summarize : List LocalLog -> Summary
+summarize logs =
     let
         fromLogs =
             List.foldl addLog emptyTotals logs
-
-        official =
-            Maybe.andThen officialTotals report
     in
     { flights = fromLogs.flights
-    , minutes = choose .minutes official fromLogs.minutes
-    , takeoffs = choose .takeoffs official fromLogs.takeoffs
-    , landings = choose .landings official fromLogs.landings
-    , fromReport = official /= Nothing
-    , details = Maybe.map reportDetails report |> Maybe.withDefault []
+    , minutes = Just fromLogs.minutes
+    , takeoffs = Just fromLogs.takeoffs
+    , landings = Just fromLogs.landings
+    , details = flightDetails logs
     , byAircraft = aircraftTotals logs
     }
-
-
-choose : (Official -> Maybe Int) -> Maybe Official -> Int -> Maybe Int
-choose read official fallback =
-    case Maybe.andThen read official of
-        Just value ->
-            Just value
-
-        Nothing ->
-            Just fallback
 
 
 emptyTotals : { flights : Int, minutes : Int, takeoffs : Int, landings : Int }
@@ -82,189 +58,185 @@ addLog log totals =
     }
 
 
-officialTotals : ReportEntry -> Maybe Official
-officialTotals report =
-    case report of
-        Report.PlaneDgacReport totals ->
-            Just (planeOfficial totals)
+flightDetails : List LocalLog -> List ( String, String )
+flightDetails logs =
+    case logs of
+        [] ->
+            []
 
-        Report.HelicopterDgacReport totals ->
-            Just (planeOfficial totals)
+        first :: _ ->
+            case first.entry of
+                PlaneDgacEntry _ ->
+                    planeFlightDetails logs
 
-        Report.GliderDgacReport totals ->
-            Just (gliderOfficial totals)
+                HelicopterDgacEntry _ ->
+                    planeFlightDetails logs
 
-        Report.BalloonDgacReport totals ->
-            Just (balloonOfficial totals)
+                GliderDgacEntry _ ->
+                    gliderFlightDetails logs
 
-        Report.PlaneFcl1080Report totals ->
-            Just
-                { minutes = parseReportTime totals.total_time_flight
-                , takeoffs = Just (totals.take_off_day + totals.take_off_night)
-                , landings = Just (totals.landing_day + totals.landing_night)
-                }
+                BalloonDgacEntry _ ->
+                    balloonFlightDetails logs
 
-        Report.UlmFfplumReport totals ->
-            Just
-                { minutes = sumTimes [ totals.dual_minutes, totals.pilot_in_command_minutes ]
-                , takeoffs = Just totals.takeoff_count
-                , landings = Just totals.landing_count
-                }
+                PlaneFcl1080Entry _ ->
+                    fclFlightDetails logs
 
-        Report.ParachuteCloudyReport _ ->
-            Nothing
+                UlmFfplumEntry _ ->
+                    ulmFlightDetails logs
+
+                ParachuteCloudyEntry _ ->
+                    parachuteFlightDetails logs
 
 
-planeOfficial : PlaneReport.Report -> Official
-planeOfficial totals =
-    { minutes = sumTimes (planeBlock totals)
-    , takeoffs = Just totals.takeoff_count
-    , landings = Just totals.landing_count
-    }
-
-
-gliderOfficial : GliderReport.Report -> Official
-gliderOfficial totals =
-    { minutes = sumTimes (gliderBlock totals)
-    , takeoffs = Just totals.takeoff_count
-    , landings = Just totals.landing_count
-    }
-
-
-balloonOfficial : BalloonReport.Report -> Official
-balloonOfficial totals =
-    { minutes = sumTimes (balloonBlock totals)
-    , takeoffs = Just totals.takeoff_count
-    , landings = Just totals.landing_count
-    }
-
-
-reportDetails : ReportEntry -> List ( String, String )
-reportDetails report =
-    case report of
-        Report.PlaneDgacReport totals ->
-            planeDetails totals
-
-        Report.HelicopterDgacReport totals ->
-            planeDetails totals
-
-        Report.GliderDgacReport totals ->
-            gliderDetails totals
-
-        Report.BalloonDgacReport totals ->
-            balloonDetails totals
-
-        Report.PlaneFcl1080Report totals ->
-            keep
-                [ ( "Temps de vol", show totals.total_time_flight )
-                , ( "Pilote seul", show totals.single_pilot_time )
-                , ( "Multipilote", show totals.multi_pilot_time )
-                , ( "Commandant de bord", show totals.pilot_time_in_cmd )
-                , ( "Double commande", show totals.pilot_time_dual )
-                , ( "Copilote", show totals.co_pilot_minutes )
-                , ( "Nuit", show totals.op_time_night )
-                , ( "IFR", show totals.op_time_ifr )
-                , ( "Instruction", show totals.pilot_time_inst )
-                , ( "Simulateur", show totals.synthetic_time )
-                ]
-
-        Report.UlmFfplumReport totals ->
-            keep
-                [ ( "Double commande", show totals.dual_minutes )
-                , ( "Commandant de bord", show totals.pilot_in_command_minutes )
-                ]
-
-        Report.ParachuteCloudyReport totals ->
-            [ ( "Sauts", String.fromInt totals.jump_count ) ]
-
-
-planeDetails : PlaneReport.Report -> List ( String, String )
-planeDetails totals =
+planeFlightDetails : List LocalLog -> List ( String, String )
+planeFlightDetails logs =
     keep
-        (List.map2 Tuple.pair planeLabels (List.map show (planeBlock totals))
-            ++ [ ( "IFR", countLabel totals.ifr )
-               , ( "Simulateur", show totals.simulator_minutes )
-               , ( "Instrument", show totals.instrument_pilot_minutes )
+        (List.map (summed planeMinutes logs) planeDetailFields
+            ++ [ ( "IFR", countLabel (summedInt planeMinutes .ifr logs) )
+               , ( "Simulateur", LogbookFormat.showMinutes (summedInt planeMinutes .simulator_minutes logs) )
+               , ( "Instrument double", LogbookFormat.showMinutes (summedInt planeMinutes .instrument_day_dual_minutes logs) )
+               , ( "Instrument", LogbookFormat.showMinutes (summedInt planeMinutes .instrument_pilot_minutes logs) )
                ]
         )
 
 
-gliderDetails : GliderReport.Report -> List ( String, String )
-gliderDetails totals =
-    keep (List.map2 Tuple.pair planeLabels (List.map show (gliderBlock totals)))
-
-
-balloonDetails : BalloonReport.Report -> List ( String, String )
-balloonDetails totals =
-    keep (List.map2 Tuple.pair planeLabels (List.map show (balloonBlock totals)))
-
-
-planeLabels : List String
-planeLabels =
-    [ "Équipage jour"
-    , "Équipage nuit"
-    , "Double jour"
-    , "CDB jour"
-    , "Double nuit"
-    , "CDB nuit"
-    , "Multi double jour"
-    , "Multi CDB jour"
-    , "Multi copi jour"
-    , "Multi double nuit"
-    , "Multi CDB nuit"
-    , "Multi copi nuit"
+planeDetailFields : List ( String, PlaneDgac.Log -> Int )
+planeDetailFields =
+    [ ( "Équipage jour", .crew_day_minutes )
+    , ( "Équipage nuit", .crew_night_minutes )
+    , ( "Double jour", .single_engine_day_dual_minutes )
+    , ( "CDB jour", .single_engine_day_captain_minutes )
+    , ( "Double nuit", .single_engine_night_dual_minutes )
+    , ( "CDB nuit", .single_engine_night_captain_minutes )
+    , ( "Multi double jour", .multi_engine_day_dual_minutes )
+    , ( "Multi CDB jour", .multi_engine_day_captain_minutes )
+    , ( "Multi copi jour", .multi_engine_day_co_pilot_minutes )
+    , ( "Multi double nuit", .multi_engine_night_dual_minutes )
+    , ( "Multi CDB nuit", .multi_engine_night_captain_minutes )
+    , ( "Multi copi nuit", .multi_engine_night_co_pilot_minutes )
     ]
 
 
-planeBlock : PlaneReport.Report -> List String
-planeBlock totals =
-    [ totals.crew_day_minutes
-    , totals.crew_night_minutes
-    , totals.single_engine_day_dual_minutes
-    , totals.single_engine_day_captain_minutes
-    , totals.single_engine_night_dual_minutes
-    , totals.single_engine_night_captain_minutes
-    , totals.multi_engine_day_dual_minutes
-    , totals.multi_engine_day_captain_minutes
-    , totals.multi_engine_day_co_pilot_minutes
-    , totals.multi_engine_night_dual_minutes
-    , totals.multi_engine_night_captain_minutes
-    , totals.multi_engine_night_co_pilot_minutes
-    ]
+gliderFlightDetails : List LocalLog -> List ( String, String )
+gliderFlightDetails logs =
+    keep
+        [ ( "Double commande", LogbookFormat.showMinutes (summedInt gliderMinutes .dual_minutes logs) )
+        , ( "Commandant de bord", LogbookFormat.showMinutes (summedInt gliderMinutes .pilot_in_command_minutes logs) )
+        , ( "Instruction", LogbookFormat.showMinutes (summedInt gliderMinutes .instructor_minutes logs) )
+        ]
 
 
-gliderBlock : GliderReport.Report -> List String
-gliderBlock totals =
-    [ totals.crew_day_minutes
-    , totals.crew_night_minutes
-    , totals.single_engine_day_dual_minutes
-    , totals.single_engine_day_captain_minutes
-    , totals.single_engine_night_dual_minutes
-    , totals.single_engine_night_captain_minutes
-    , totals.multi_engine_day_dual_minutes
-    , totals.multi_engine_day_captain_minutes
-    , totals.multi_engine_day_co_pilot_minutes
-    , totals.multi_engine_night_dual_minutes
-    , totals.multi_engine_night_captain_minutes
-    , totals.multi_engine_night_co_pilot_minutes
-    ]
+balloonFlightDetails : List LocalLog -> List ( String, String )
+balloonFlightDetails logs =
+    keep
+        [ ( "Double commande", LogbookFormat.showMinutes (summedInt balloonMinutes .dual_minutes logs) )
+        , ( "Commandant de bord", LogbookFormat.showMinutes (summedInt balloonMinutes .pilot_in_command_minutes logs) )
+        ]
 
 
-balloonBlock : BalloonReport.Report -> List String
-balloonBlock totals =
-    [ totals.crew_day_minutes
-    , totals.crew_night_minutes
-    , totals.single_engine_day_dual_minutes
-    , totals.single_engine_day_captain_minutes
-    , totals.single_engine_night_dual_minutes
-    , totals.single_engine_night_captain_minutes
-    , totals.multi_engine_day_dual_minutes
-    , totals.multi_engine_day_captain_minutes
-    , totals.multi_engine_day_co_pilot_minutes
-    , totals.multi_engine_night_dual_minutes
-    , totals.multi_engine_night_captain_minutes
-    , totals.multi_engine_night_co_pilot_minutes
-    ]
+fclFlightDetails : List LocalLog -> List ( String, String )
+fclFlightDetails logs =
+    keep
+        [ ( "Temps de vol", LogbookFormat.showMinutes (summedInt fclMinutes .total_time_flight logs) )
+        , ( "Pilote seul", LogbookFormat.showMinutes (summedInt fclMinutes .single_pilot_time logs) )
+        , ( "Multipilote", LogbookFormat.showMinutes (summedInt fclMinutes .multi_pilot_time logs) )
+        , ( "Commandant de bord", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_in_cmd logs) )
+        , ( "Double commande", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_dual logs) )
+        , ( "Copilote", LogbookFormat.showMinutes (summedInt fclMinutes .co_pilot_minutes logs) )
+        , ( "Nuit", LogbookFormat.showMinutes (summedInt fclMinutes .op_time_night logs) )
+        , ( "IFR", LogbookFormat.showMinutes (summedInt fclMinutes .op_time_ifr logs) )
+        , ( "Instruction", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_inst logs) )
+        , ( "Simulateur", LogbookFormat.showMinutes (summedInt fclMinutes .synthetic_time logs) )
+        ]
+
+
+ulmFlightDetails : List LocalLog -> List ( String, String )
+ulmFlightDetails logs =
+    keep
+        [ ( "Double commande", LogbookFormat.showMinutes (summedInt ulmMinutes .dual_minutes logs) )
+        , ( "Commandant de bord", LogbookFormat.showMinutes (summedInt ulmMinutes .pilot_in_command_minutes logs) )
+        ]
+
+
+parachuteFlightDetails : List LocalLog -> List ( String, String )
+parachuteFlightDetails logs =
+    keep
+        [ ( "Sauts", countLabel (List.length logs) )
+        , ( "Chute", LogbookFormat.showMinutes (summedInt parachuteMinutes .falling_time logs) )
+        ]
+
+
+summed : (a -> LocalLog -> Int) -> List LocalLog -> ( String, a ) -> ( String, String )
+summed pick logs ( label, field ) =
+    ( label, LogbookFormat.showMinutes (summedInt pick field logs) )
+
+
+summedInt : (a -> LocalLog -> Int) -> a -> List LocalLog -> Int
+summedInt pick field logs =
+    List.foldl (\log total -> total + pick field log) 0 logs
+
+
+planeMinutes : (PlaneDgac.Log -> Int) -> LocalLog -> Int
+planeMinutes pick log =
+    case log.entry of
+        PlaneDgacEntry entry ->
+            pick entry
+
+        HelicopterDgacEntry entry ->
+            pick entry
+
+        _ ->
+            0
+
+
+gliderMinutes : (GliderDgac.Log -> Int) -> LocalLog -> Int
+gliderMinutes pick log =
+    case log.entry of
+        GliderDgacEntry entry ->
+            pick entry
+
+        _ ->
+            0
+
+
+balloonMinutes : (BalloonDgac.Log -> Int) -> LocalLog -> Int
+balloonMinutes pick log =
+    case log.entry of
+        BalloonDgacEntry entry ->
+            pick entry
+
+        _ ->
+            0
+
+
+fclMinutes : (PlaneFcl1080.Log -> Int) -> LocalLog -> Int
+fclMinutes pick log =
+    case log.entry of
+        PlaneFcl1080Entry entry ->
+            pick entry
+
+        _ ->
+            0
+
+
+ulmMinutes : (UlmFfplum.Log -> Int) -> LocalLog -> Int
+ulmMinutes pick log =
+    case log.entry of
+        UlmFfplumEntry entry ->
+            pick entry
+
+        _ ->
+            0
+
+
+parachuteMinutes : (ParachuteCloudy.Log -> Int) -> LocalLog -> Int
+parachuteMinutes pick log =
+    case log.entry of
+        ParachuteCloudyEntry entry ->
+            pick entry
+
+        _ ->
+            0
 
 
 aircraftTotals : List LocalLog -> List AircraftTotal
@@ -421,31 +393,6 @@ aircraftType entry =
 
         ParachuteCloudyEntry log ->
             log.aircraft
-
-
-sumTimes : List String -> Maybe Int
-sumTimes values =
-    List.foldl
-        (\raw acc ->
-            Maybe.map2 (+) acc (parseReportTime raw)
-        )
-        (Just 0)
-        values
-
-
-parseReportTime : String -> Maybe Int
-parseReportTime raw =
-    case String.split ":" (String.trim raw) of
-        [ hours, minutes, _ ] ->
-            TimeFormat.minutesFromHhmm (hours ++ ":" ++ minutes)
-
-        _ ->
-            TimeFormat.minutesFromHhmm raw
-
-
-show : String -> String
-show =
-    LogbookFormat.showReportTime
 
 
 keep : List ( String, String ) -> List ( String, String )

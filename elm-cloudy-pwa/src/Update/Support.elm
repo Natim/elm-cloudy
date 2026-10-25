@@ -52,7 +52,6 @@ logout model =
         , route = Login
         , logbooks = []
         , logs = Dict.empty
-        , reports = Dict.empty
         , outbox = []
         , editor = Nothing
         , navOpen = False

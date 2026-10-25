@@ -36,7 +36,7 @@ view model =
                     StatsView.view
                         { title = "Bonjour " ++ Shell.displayName email
                         , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
-                        , summary = Stats.summarize logs (Dict.get (String.fromInt book.id) model.reports)
+                        , summary = Stats.summarize logs
                         , coverage = logCoverage model book.id
                         , onNewFlight = Dashboard.NewFlight book.id
                         , onAircraft = Dashboard.OpenAircraft

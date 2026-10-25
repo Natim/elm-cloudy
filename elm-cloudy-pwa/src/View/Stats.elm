@@ -57,15 +57,11 @@ stat label value =
         ]
 
 
-caption : { a | summary : Summary, coverage : Coverage } -> String
+caption : { a | coverage : Coverage } -> String
 caption config =
     let
         source =
-            if config.summary.fromReport then
-                "Le temps, les décollages et les atterrissages viennent du carnet complet."
-
-            else
-                "Chiffres calculés sur les vols enregistrés sur cet appareil."
+            "Chiffres calculés sur les vols enregistrés sur cet appareil."
     in
     case config.coverage of
         Complete ->

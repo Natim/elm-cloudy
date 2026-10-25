@@ -50,7 +50,7 @@ view model logbookId =
                 [ p [] [ text "Aucun vol en cache." ] ]
 
           else
-            Logbook.view category logs (Dict.get (String.fromInt logbookId) model.reports) (\clientId -> Flights.Edit logbookId clientId)
+            Logbook.view category logs (\clientId -> Flights.Edit logbookId clientId)
         ]
 
 

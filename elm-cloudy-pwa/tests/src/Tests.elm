@@ -246,7 +246,7 @@ all =
                 \_ ->
                     let
                         summary =
-                            Stats.summarize [ sample 60 "F-GAAA" "DR400", sample 30 "F-GZZZ" "dr400", sample 15 "F-GBBB" "C172" ] Nothing
+                            Stats.summarize [ sample 60 "F-GAAA" "DR400", sample 30 "F-GZZZ" "dr400", sample 15 "F-GBBB" "C172" ]
                     in
                     Expect.all
                         [ \_ -> Expect.equal 3 summary.flights
@@ -265,6 +265,7 @@ all =
 
                                 _ ->
                                     Expect.fail "expected two aircraft types"
+                        , \_ -> Expect.equal [ ( "Équipage jour", "1:45" ), ( "Instrument", "0:45" ) ] summary.details
                         ]
                         summary
             ]

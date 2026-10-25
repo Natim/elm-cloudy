@@ -10,7 +10,6 @@ import Browser.Navigation as Nav
 import Cloudy.Data.Aircraft exposing (Aircraft)
 import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
-import Cloudy.Data.Report exposing (ReportEntry)
 import Dict
 import File
 import LocalLog exposing (LocalLog)
@@ -28,7 +27,6 @@ type alias Model =
     , session : Maybe Session
     , logbooks : List Logbook
     , logs : Dict.Dict String (List LocalLog)
-    , reports : Dict.Dict String ReportEntry
     , outbox : List OutboxOp
     , loginForm : LoginForm
     , editor : Maybe EditorState
@@ -85,7 +83,6 @@ init _ url key =
       , session = Nothing
       , logbooks = []
       , logs = Dict.empty
-      , reports = Dict.empty
       , outbox = []
       , loginForm = { email = "", password = "", baseUrl = "https://cloudy.fr/api/v1", advancedOpen = False }
       , editor = Nothing

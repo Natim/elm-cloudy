@@ -5,7 +5,6 @@ import Cloudy
 import Cloudy.Client as Client
 import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.LogbookCategory as LogbookCategory
-import Cloudy.Data.Report exposing (ReportEntry)
 import Cloudy.Request as Request
 import Dict
 import Effect exposing (Effect(..))
@@ -21,7 +20,6 @@ import Update.Support as Support
 type Msg
     = Refresh Int
     | GotPage Int LogbookCategory.LogbookCategory Int (Maybe String) (Result Http.Error LogListPage.LogListPage)
-    | GotReports Int (Result Http.Error ReportEntry)
     | StartNew Int
     | Edit Int String
 
@@ -51,11 +49,7 @@ update msg model =
                         , logPaging = Just logbookId
                         , logsPartial = abandonPaging model logbookId
                       }
-                    , Cmd.batch
-                        [ fetchLogsPage client book.category logbookId generation Nothing
-                        , Cloudy.getReports client book.category logbookId
-                            |> Request.send (GotReports logbookId)
-                        ]
+                    , fetchLogsPage client book.category logbookId generation Nothing
                     , []
                     )
 
@@ -69,17 +63,6 @@ update msg model =
 
                         Just _ ->
                             ( model, Cmd.none, [] )
-
-        GotReports logbookId result ->
-            case result of
-                Ok report ->
-                    ( { model | reports = Dict.insert (String.fromInt logbookId) report model.reports }
-                    , Cmd.none
-                    , []
-                    )
-
-                Err _ ->
-                    ( model, Cmd.none, [] )
 
         GotPage logbookId category generation pageToken result ->
             if generation /= model.logFetchId then

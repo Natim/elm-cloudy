@@ -8,8 +8,6 @@ import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
 import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
-import Cloudy.Data.Report as Report exposing (ReportEntry(..))
-import Cloudy.Data.Report.PlaneDgac as PlaneReport
 import Html exposing (Html, button, div, small, span, table, tbody, td, text, th, thead, tr)
 import Html.Attributes exposing (class, colspan, rowspan, title)
 import Html.Events exposing (onClick)
@@ -18,28 +16,28 @@ import LogHelpers
 import LogbookFormat
 
 
-view : LogbookCategory -> List LocalLog -> Maybe ReportEntry -> (String -> msg) -> Html msg
-view category logs report onOpen =
+view : LogbookCategory -> List LocalLog -> (String -> msg) -> Html msg
+view category logs onOpen =
     let
         ( sheet, cards ) =
             case category of
                 PlaneDgac ->
-                    ( planeTable logs report onOpen, planeCards logs report onOpen )
+                    ( planeTable logs onOpen, planeCards logs onOpen )
 
                 HelicopterDgac ->
-                    ( planeTable logs report onOpen, planeCards logs report onOpen )
+                    ( planeTable logs onOpen, planeCards logs onOpen )
 
                 GliderDgac ->
-                    ( simpleTable gliderCols Nothing logs onOpen, simpleCards gliderCols Nothing logs onOpen )
+                    ( simpleTable gliderCols (gliderTotals logs) logs onOpen, simpleCards gliderCols (gliderTotals logs) logs onOpen )
 
                 PlaneFcl1080 ->
-                    ( fclTable logs report onOpen, simpleCards fclCols (fclTotals report) logs onOpen )
+                    ( fclTable logs onOpen, simpleCards fclCols (fclTotals logs) logs onOpen )
 
                 UlmFfplum ->
-                    ( simpleTable ulmCols (ulmTotals report) logs onOpen, simpleCards ulmCols (ulmTotals report) logs onOpen )
+                    ( simpleTable ulmCols (ulmTotals logs) logs onOpen, simpleCards ulmCols (ulmTotals logs) logs onOpen )
 
                 BalloonDgac ->
-                    ( simpleTable balloonCols Nothing logs onOpen, simpleCards balloonCols Nothing logs onOpen )
+                    ( simpleTable balloonCols (balloonTotals logs) logs onOpen, simpleCards balloonCols (balloonTotals logs) logs onOpen )
 
                 ParachuteCloudy ->
                     ( simpleTable parachuteCols Nothing logs onOpen, simpleCards parachuteCols Nothing logs onOpen )
@@ -55,14 +53,14 @@ divScroll child =
     Html.div [ class "logbook-scroll" ] [ child ]
 
 
-planeTable : List LocalLog -> Maybe ReportEntry -> (String -> msg) -> Html msg
-planeTable logs report onOpen =
+planeTable : List LocalLog -> (String -> msg) -> Html msg
+planeTable logs onOpen =
     let
         multi =
-            includeMulti logs report
+            List.any entryHasMulti logs
     in
     table [ class "logbook" ]
-        [ thead [] (planeHeader multi ++ planeTotals multi report)
+        [ thead [] (planeHeader multi ++ planeTotals multi logs)
         , tbody [] (List.map (planeRow multi onOpen) logs)
         ]
 
@@ -141,87 +139,100 @@ multiLeafHeader multi =
         []
 
 
-planeTotals : Bool -> Maybe ReportEntry -> List (Html msg)
-planeTotals multi report =
-    case report of
-        Just (PlaneDgacReport totals) ->
-            [ planeTotalsRow multi totals ]
+planeTotals : Bool -> List LocalLog -> List (Html msg)
+planeTotals multi logs =
+    if List.isEmpty logs then
+        []
 
-        Just (HelicopterDgacReport totals) ->
-            [ planeTotalsRow multi totals ]
-
-        _ ->
-            []
+    else
+        [ planeTotalsRow multi logs ]
 
 
-planeTotalsRow : Bool -> PlaneReport.Report -> Html msg
-planeTotalsRow multi totals =
+planeTotalsRow : Bool -> List LocalLog -> Html msg
+planeTotalsRow multi logs =
     tr [ class "totals" ]
         (List.repeat 5 (td [] [ text "" ])
-            ++ timeCells
-                ([ totals.crew_day_minutes
-                 , totals.crew_night_minutes
-                 , totals.single_engine_day_dual_minutes
-                 , totals.single_engine_day_captain_minutes
-                 , totals.single_engine_night_dual_minutes
-                 , totals.single_engine_night_captain_minutes
-                 ]
-                    ++ (if multi then
-                            [ totals.multi_engine_day_dual_minutes
-                            , totals.multi_engine_day_captain_minutes
-                            , totals.multi_engine_day_co_pilot_minutes
-                            , totals.multi_engine_night_dual_minutes
-                            , totals.multi_engine_night_captain_minutes
-                            , totals.multi_engine_night_co_pilot_minutes
-                            ]
-
-                        else
-                            []
-                       )
-                )
+            ++ minuteCells (planeTotalMinutes multi logs)
         )
 
 
-timeCells : List String -> List (Html msg)
-timeCells values =
-    List.map (\value -> td [ class "time" ] [ text (LogbookFormat.showReportTime value) ]) values
+planeTotalMinutes : Bool -> List LocalLog -> List Int
+planeTotalMinutes multi logs =
+    List.map (\pick -> sumPlane pick logs) (planeFields multi)
 
 
-planeCards : List LocalLog -> Maybe ReportEntry -> (String -> msg) -> Html msg
-planeCards logs report onOpen =
+planeFields : Bool -> List (PlaneDgac.Log -> Int)
+planeFields multi =
+    [ .crew_day_minutes
+    , .crew_night_minutes
+    , .single_engine_day_dual_minutes
+    , .single_engine_day_captain_minutes
+    , .single_engine_night_dual_minutes
+    , .single_engine_night_captain_minutes
+    ]
+        ++ (if multi then
+                [ .multi_engine_day_dual_minutes
+                , .multi_engine_day_captain_minutes
+                , .multi_engine_day_co_pilot_minutes
+                , .multi_engine_night_dual_minutes
+                , .multi_engine_night_captain_minutes
+                , .multi_engine_night_co_pilot_minutes
+                ]
+
+            else
+                []
+           )
+
+
+sumPlane : (PlaneDgac.Log -> Int) -> List LocalLog -> Int
+sumPlane pick logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                PlaneDgacEntry entry ->
+                    total + pick entry
+
+                HelicopterDgacEntry entry ->
+                    total + pick entry
+
+                _ ->
+                    total
+        )
+        0
+        logs
+
+
+planeCards : List LocalLog -> (String -> msg) -> Html msg
+planeCards logs onOpen =
     div [ class "log-cards" ]
-        (planeTotalsCard report
+        (planeTotalsCard logs
             :: List.filterMap (planeCard onOpen) logs
         )
 
 
-planeTotalsCard : Maybe ReportEntry -> Html msg
-planeTotalsCard report =
-    case report of
-        Just (PlaneDgacReport totals) ->
-            totalsCard (planeReportParts totals)
+planeTotalsCard : List LocalLog -> Html msg
+planeTotalsCard logs =
+    if List.isEmpty logs then
+        text ""
 
-        Just (HelicopterDgacReport totals) ->
-            totalsCard (planeReportParts totals)
-
-        _ ->
-            text ""
+    else
+        totalsCard (planeFlightParts logs)
 
 
-planeReportParts : PlaneReport.Report -> List ( String, String )
-planeReportParts totals =
-    [ ( "Équipage jour", LogbookFormat.showReportTime totals.crew_day_minutes )
-    , ( "Équipage nuit", LogbookFormat.showReportTime totals.crew_night_minutes )
-    , ( "Double jour", LogbookFormat.showReportTime totals.single_engine_day_dual_minutes )
-    , ( "CDB jour", LogbookFormat.showReportTime totals.single_engine_day_captain_minutes )
-    , ( "Double nuit", LogbookFormat.showReportTime totals.single_engine_night_dual_minutes )
-    , ( "CDB nuit", LogbookFormat.showReportTime totals.single_engine_night_captain_minutes )
-    , ( "Multi double jour", LogbookFormat.showReportTime totals.multi_engine_day_dual_minutes )
-    , ( "Multi CDB jour", LogbookFormat.showReportTime totals.multi_engine_day_captain_minutes )
-    , ( "Multi copi jour", LogbookFormat.showReportTime totals.multi_engine_day_co_pilot_minutes )
-    , ( "Multi double nuit", LogbookFormat.showReportTime totals.multi_engine_night_dual_minutes )
-    , ( "Multi CDB nuit", LogbookFormat.showReportTime totals.multi_engine_night_captain_minutes )
-    , ( "Multi copi nuit", LogbookFormat.showReportTime totals.multi_engine_night_co_pilot_minutes )
+planeFlightParts : List LocalLog -> List ( String, String )
+planeFlightParts logs =
+    [ ( "Équipage jour", LogbookFormat.showMinutes (sumPlane .crew_day_minutes logs) )
+    , ( "Équipage nuit", LogbookFormat.showMinutes (sumPlane .crew_night_minutes logs) )
+    , ( "Double jour", LogbookFormat.showMinutes (sumPlane .single_engine_day_dual_minutes logs) )
+    , ( "CDB jour", LogbookFormat.showMinutes (sumPlane .single_engine_day_captain_minutes logs) )
+    , ( "Double nuit", LogbookFormat.showMinutes (sumPlane .single_engine_night_dual_minutes logs) )
+    , ( "CDB nuit", LogbookFormat.showMinutes (sumPlane .single_engine_night_captain_minutes logs) )
+    , ( "Multi double jour", LogbookFormat.showMinutes (sumPlane .multi_engine_day_dual_minutes logs) )
+    , ( "Multi CDB jour", LogbookFormat.showMinutes (sumPlane .multi_engine_day_captain_minutes logs) )
+    , ( "Multi copi jour", LogbookFormat.showMinutes (sumPlane .multi_engine_day_co_pilot_minutes logs) )
+    , ( "Multi double nuit", LogbookFormat.showMinutes (sumPlane .multi_engine_night_dual_minutes logs) )
+    , ( "Multi CDB nuit", LogbookFormat.showMinutes (sumPlane .multi_engine_night_captain_minutes logs) )
+    , ( "Multi copi nuit", LogbookFormat.showMinutes (sumPlane .multi_engine_night_co_pilot_minutes logs) )
     ]
 
 
@@ -373,11 +384,6 @@ minuteCells values =
     List.map (\value -> td [ class "time" ] [ text (LogbookFormat.showMinutes value) ]) values
 
 
-includeMulti : List LocalLog -> Maybe ReportEntry -> Bool
-includeMulti logs report =
-    List.any entryHasMulti logs || reportHasMulti report
-
-
 entryHasMulti : LocalLog -> Bool
 entryHasMulti log =
     case log.entry of
@@ -399,31 +405,6 @@ multiMinutes entry =
         + entry.multi_engine_night_dual_minutes
         + entry.multi_engine_night_captain_minutes
         + entry.multi_engine_night_co_pilot_minutes
-
-
-reportHasMulti : Maybe ReportEntry -> Bool
-reportHasMulti report =
-    case report of
-        Just (PlaneDgacReport totals) ->
-            reportMulti totals
-
-        Just (HelicopterDgacReport totals) ->
-            reportMulti totals
-
-        _ ->
-            False
-
-
-reportMulti : PlaneReport.Report -> Bool
-reportMulti totals =
-    List.any (\value -> LogbookFormat.showReportTime value /= "")
-        [ totals.multi_engine_day_dual_minutes
-        , totals.multi_engine_day_captain_minutes
-        , totals.multi_engine_day_co_pilot_minutes
-        , totals.multi_engine_night_dual_minutes
-        , totals.multi_engine_night_captain_minutes
-        , totals.multi_engine_night_co_pilot_minutes
-        ]
 
 
 type alias Col =
@@ -550,6 +531,35 @@ gliderMinutes pick log =
             ""
 
 
+gliderTotals : List LocalLog -> Maybe (List String)
+gliderTotals logs =
+    Just
+        [ ""
+        , ""
+        , ""
+        , ""
+        , ""
+        , LogbookFormat.showMinutes (sumGlider .dual_minutes logs)
+        , LogbookFormat.showMinutes (sumGlider .pilot_in_command_minutes logs)
+        , LogbookFormat.showMinutes (sumGlider .instructor_minutes logs)
+        ]
+
+
+sumGlider : (GliderDgac.Log -> Int) -> List LocalLog -> Int
+sumGlider pick logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                GliderDgacEntry entry ->
+                    total + pick entry
+
+                _ ->
+                    total
+        )
+        0
+        logs
+
+
 ulmCols : List Col
 ulmCols =
     [ dateCol
@@ -561,21 +571,31 @@ ulmCols =
     ]
 
 
-ulmTotals : Maybe ReportEntry -> Maybe (List String)
-ulmTotals report =
-    case report of
-        Just (UlmFfplumReport totals) ->
-            Just
-                [ ""
-                , ""
-                , ""
-                , ""
-                , LogbookFormat.showReportTime totals.dual_minutes
-                , LogbookFormat.showReportTime totals.pilot_in_command_minutes
-                ]
+ulmTotals : List LocalLog -> Maybe (List String)
+ulmTotals logs =
+    Just
+        [ ""
+        , ""
+        , ""
+        , ""
+        , LogbookFormat.showMinutes (sumUlm .dual_minutes logs)
+        , LogbookFormat.showMinutes (sumUlm .pilot_in_command_minutes logs)
+        ]
 
-        _ ->
-            Nothing
+
+sumUlm : (UlmFfplum.Log -> Int) -> List LocalLog -> Int
+sumUlm pick logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                UlmFfplumEntry entry ->
+                    total + pick entry
+
+                _ ->
+                    total
+        )
+        0
+        logs
 
 
 ulm : (UlmFfplum.Log -> String) -> LocalLog -> String
@@ -649,12 +669,39 @@ balloonMinutes pick log =
             ""
 
 
-fclTable : List LocalLog -> Maybe ReportEntry -> (String -> msg) -> Html msg
-fclTable logs report onOpen =
+balloonTotals : List LocalLog -> Maybe (List String)
+balloonTotals logs =
+    Just
+        [ ""
+        , ""
+        , ""
+        , ""
+        , LogbookFormat.showMinutes (sumBalloon .dual_minutes logs)
+        , LogbookFormat.showMinutes (sumBalloon .pilot_in_command_minutes logs)
+        ]
+
+
+sumBalloon : (BalloonDgac.Log -> Int) -> List LocalLog -> Int
+sumBalloon pick logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                BalloonDgacEntry entry ->
+                    total + pick entry
+
+                _ ->
+                    total
+        )
+        0
+        logs
+
+
+fclTable : List LocalLog -> (String -> msg) -> Html msg
+fclTable logs onOpen =
     table [ class "logbook" ]
         [ thead []
             (fclHeader
-                ++ (case fclTotals report of
+                ++ (case fclTotals logs of
                         Just values ->
                             [ tr [ class "totals" ]
                                 (List.map (\value -> td [ class "time" ] [ text value ]) values)
@@ -715,30 +762,40 @@ fclCols =
     ]
 
 
-fclTotals : Maybe ReportEntry -> Maybe (List String)
-fclTotals report =
-    case report of
-        Just (PlaneFcl1080Report totals) ->
-            Just
-                [ ""
-                , ""
-                , ""
-                , ""
-                , ""
-                , LogbookFormat.showReportTime totals.total_time_flight
-                , LogbookFormat.showReportTime totals.op_time_night
-                , LogbookFormat.showReportTime totals.op_time_ifr
-                , LogbookFormat.showReportTime totals.pilot_time_in_cmd
-                , LogbookFormat.showReportTime totals.co_pilot_minutes
-                , LogbookFormat.showReportTime totals.pilot_time_dual
-                , LogbookFormat.showReportTime totals.pilot_time_inst
-                , ""
-                , ""
-                , LogbookFormat.showReportTime totals.synthetic_time
-                ]
+fclTotals : List LocalLog -> Maybe (List String)
+fclTotals logs =
+    Just
+        [ ""
+        , ""
+        , ""
+        , ""
+        , ""
+        , LogbookFormat.showMinutes (sumFcl .total_time_flight logs)
+        , LogbookFormat.showMinutes (sumFcl .op_time_night logs)
+        , LogbookFormat.showMinutes (sumFcl .op_time_ifr logs)
+        , LogbookFormat.showMinutes (sumFcl .pilot_time_in_cmd logs)
+        , LogbookFormat.showMinutes (sumFcl .co_pilot_minutes logs)
+        , LogbookFormat.showMinutes (sumFcl .pilot_time_dual logs)
+        , LogbookFormat.showMinutes (sumFcl .pilot_time_inst logs)
+        , ""
+        , ""
+        , LogbookFormat.showMinutes (sumFcl .synthetic_time logs)
+        ]
 
-        _ ->
-            Nothing
+
+sumFcl : (PlaneFcl1080.Log -> Int) -> List LocalLog -> Int
+sumFcl pick logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                PlaneFcl1080Entry entry ->
+                    total + pick entry
+
+                _ ->
+                    total
+        )
+        0
+        logs
 
 
 fcl : (PlaneFcl1080.Log -> String) -> LocalLog -> String
