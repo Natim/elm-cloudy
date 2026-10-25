@@ -116,7 +116,7 @@ decoder =
         |> required "co_pilot_minutes" Decode.int
         |> required "pilot_time_dual" Decode.int
         |> required "pilot_time_inst" Decode.int
-        |> optional "synthetic_date" Decode.string ""
+        |> optional "synthetic_date" (Decode.oneOf [ Decode.string, Decode.null "" ]) ""
         |> required "synthetic_type" Decode.string
         |> required "synthetic_time" Decode.int
         |> required "observations" Decode.string
@@ -153,37 +153,63 @@ encodeCreate record =
 encodeReplace : Log -> Value
 encodeReplace record =
     Encode.object
-        [ ( "flight_date", Encode.string record.flight_date )
-        , ( "optional_filter", Encode.string record.optional_filter )
-        , ( "departure_place", Encode.string record.departure_place )
-        , ( "departure_time", Encode.string record.departure_time )
-        , ( "arrival_place", Encode.string record.arrival_place )
-        , ( "arrival_time", Encode.string record.arrival_time )
-        , ( "aircraft_type", Encode.string record.aircraft_type )
-        , ( "aircraft_registration", Encode.string record.aircraft_registration )
-        , ( "single_pilot_se", Encode.bool record.single_pilot_se )
-        , ( "single_pilot_me", Encode.bool record.single_pilot_me )
-        , ( "single_pilot_time", Encode.int record.single_pilot_time )
-        , ( "multi_pilot_time", Encode.int record.multi_pilot_time )
-        , ( "total_time_flight", Encode.int record.total_time_flight )
-        , ( "pilot_in_command_name", Encode.string record.pilot_in_command_name )
-        , ( "take_off_day", Encode.int record.take_off_day )
-        , ( "take_off_night", Encode.int record.take_off_night )
-        , ( "landing_day", Encode.int record.landing_day )
-        , ( "landing_night", Encode.int record.landing_night )
-        , ( "op_time_night", Encode.int record.op_time_night )
-        , ( "op_time_ifr", Encode.int record.op_time_ifr )
-        , ( "pilot_time_in_cmd", Encode.int record.pilot_time_in_cmd )
-        , ( "co_pilot_minutes", Encode.int record.co_pilot_minutes )
-        , ( "pilot_time_dual", Encode.int record.pilot_time_dual )
-        , ( "pilot_time_inst", Encode.int record.pilot_time_inst )
-        , ( "synthetic_date", Encode.string record.synthetic_date )
-        , ( "synthetic_type", Encode.string record.synthetic_type )
-        , ( "synthetic_time", Encode.int record.synthetic_time )
-        , ( "observations", Encode.string record.observations )
-        , ( "comments", Encode.string record.comments )
-        , ( "passengers", Encode.list Encode.string record.passengers )
-        ]
+        (omitBlankDate "synthetic_date"
+            record.synthetic_date
+            [ ( "flight_date", Encode.string record.flight_date )
+            , ( "optional_filter", Encode.string record.optional_filter )
+            , ( "departure_place", Encode.string record.departure_place )
+            , ( "departure_time", Encode.string record.departure_time )
+            , ( "arrival_place", Encode.string record.arrival_place )
+            , ( "arrival_time", Encode.string record.arrival_time )
+            , ( "aircraft_type", Encode.string record.aircraft_type )
+            , ( "aircraft_registration", Encode.string record.aircraft_registration )
+            , ( "single_pilot_se", Encode.bool record.single_pilot_se )
+            , ( "single_pilot_me", Encode.bool record.single_pilot_me )
+            , ( "single_pilot_time", Encode.int record.single_pilot_time )
+            , ( "multi_pilot_time", Encode.int record.multi_pilot_time )
+            , ( "total_time_flight", Encode.int record.total_time_flight )
+            , ( "pilot_in_command_name", Encode.string record.pilot_in_command_name )
+            , ( "take_off_day", Encode.int record.take_off_day )
+            , ( "take_off_night", Encode.int record.take_off_night )
+            , ( "landing_day", Encode.int record.landing_day )
+            , ( "landing_night", Encode.int record.landing_night )
+            , ( "op_time_night", Encode.int record.op_time_night )
+            , ( "op_time_ifr", Encode.int record.op_time_ifr )
+            , ( "pilot_time_in_cmd", Encode.int record.pilot_time_in_cmd )
+            , ( "co_pilot_minutes", Encode.int record.co_pilot_minutes )
+            , ( "pilot_time_dual", Encode.int record.pilot_time_dual )
+            , ( "pilot_time_inst", Encode.int record.pilot_time_inst )
+            , ( "synthetic_date", Encode.string record.synthetic_date )
+            , ( "synthetic_type", Encode.string record.synthetic_type )
+            , ( "synthetic_time", Encode.int record.synthetic_time )
+            , ( "observations", Encode.string record.observations )
+            , ( "comments", Encode.string record.comments )
+            , ( "passengers", Encode.list Encode.string record.passengers )
+            ]
+        )
+
+
+omitBlankDate : String -> String -> List ( String, Value ) -> List ( String, Value )
+omitBlankDate field raw fields =
+    if String.isEmpty (String.trim raw) then
+        List.filter (\( name, _ ) -> name /= field) fields
+
+    else
+        fields
+
+
+blankDate : String -> Maybe String -> Maybe ( String, Value )
+blankDate field value =
+    case value of
+        Nothing ->
+            Nothing
+
+        Just raw ->
+            if String.isEmpty (String.trim raw) then
+                Just ( field, Encode.null )
+
+            else
+                Just ( field, Encode.string raw )
 
 
 encodePatch : Patch -> Value
@@ -214,7 +240,7 @@ encodePatch record =
             , maybeMap record.co_pilot_minutes (\v -> ( "co_pilot_minutes", Encode.int v ))
             , maybeMap record.pilot_time_dual (\v -> ( "pilot_time_dual", Encode.int v ))
             , maybeMap record.pilot_time_inst (\v -> ( "pilot_time_inst", Encode.int v ))
-            , maybeMap record.synthetic_date (\v -> ( "synthetic_date", Encode.string v ))
+            , blankDate "synthetic_date" record.synthetic_date
             , maybeMap record.synthetic_type (\v -> ( "synthetic_type", Encode.string v ))
             , maybeMap record.synthetic_time (\v -> ( "synthetic_time", Encode.int v ))
             , maybeMap record.observations (\v -> ( "observations", Encode.string v ))

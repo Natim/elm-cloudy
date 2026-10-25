@@ -9,6 +9,7 @@ import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.LogbookCategory as LogbookCategory
 import Expect
 import Json.Decode as Decode
+import Json.Encode as Encode
 import Test exposing (Test, describe, test)
 
 
@@ -115,4 +116,41 @@ tests =
                                     ( "", "missing" )
                         )
                     |> Expect.equal (Ok ( "2026-10-22T14:12:06.511667+00:00", "" ))
+        , test "decodes a null synthetic_date as empty" <|
+            \_ ->
+                let
+                    json =
+                        """{"logbook_id":1,"id":2,"visible":true,"deleted":false,"flight_date":"2011-08-01T08:00:00","updated_at":"2011-08-01T08:00:00","created_at":"2011-08-01T08:00:00","optional_filter":"","departure_place":"LFPG","departure_time":"08:00","arrival_place":"LFPO","arrival_time":"09:00","aircraft_type":"C172","aircraft_registration":"F-GABC","single_pilot_se":true,"single_pilot_me":false,"single_pilot_time":47,"multi_pilot_time":0,"total_time_flight":47,"pilot_in_command_name":"Ada Pilot","take_off_day":1,"take_off_night":0,"landing_day":1,"landing_night":0,"op_time_night":0,"op_time_ifr":0,"pilot_time_in_cmd":47,"co_pilot_minutes":0,"pilot_time_dual":0,"pilot_time_inst":0,"synthetic_date":null,"synthetic_type":"","synthetic_time":0,"observations":"","comments":"","passengers":[],"files":[]}"""
+                in
+                Decode.decodeString PlaneFcl1080.decoder json
+                    |> Result.map .synthetic_date
+                    |> Expect.equal (Ok "")
+        , test "omits an empty synthetic_date when encoding a log" <|
+            \_ ->
+                let
+                    json =
+                        """{"logbook_id":1,"id":2,"visible":true,"deleted":false,"flight_date":"2011-08-01T08:00:00","updated_at":"2011-08-01T08:00:00","created_at":"2011-08-01T08:00:00","optional_filter":"","departure_place":"LFPG","departure_time":"08:00","arrival_place":"LFPO","arrival_time":"09:00","aircraft_type":"C172","aircraft_registration":"F-GABC","single_pilot_se":true,"single_pilot_me":false,"single_pilot_time":47,"multi_pilot_time":0,"total_time_flight":47,"pilot_in_command_name":"Ada Pilot","take_off_day":1,"take_off_night":0,"landing_day":1,"landing_night":0,"op_time_night":0,"op_time_ifr":0,"pilot_time_in_cmd":47,"co_pilot_minutes":0,"pilot_time_dual":0,"pilot_time_inst":0,"synthetic_date":"","synthetic_type":"","synthetic_time":0,"observations":"","comments":"","passengers":[],"files":[]}"""
+                in
+                Decode.decodeString PlaneFcl1080.decoder json
+                    |> Result.map (\log -> { log | synthetic_date = "  " })
+                    |> Result.map PlaneFcl1080.encodeReplace
+                    |> Result.andThen
+                        (\value ->
+                            Decode.decodeString (Decode.maybe (Decode.field "synthetic_date" Decode.string)) (Encode.encode 0 value)
+                        )
+                    |> Expect.equal (Ok Nothing)
+        , test "encodes a synthetic_date when one is set" <|
+            \_ ->
+                let
+                    json =
+                        """{"logbook_id":1,"id":2,"visible":true,"deleted":false,"flight_date":"2011-08-01T08:00:00","updated_at":"2011-08-01T08:00:00","created_at":"2011-08-01T08:00:00","optional_filter":"","departure_place":"LFPG","departure_time":"08:00","arrival_place":"LFPO","arrival_time":"09:00","aircraft_type":"C172","aircraft_registration":"F-GABC","single_pilot_se":true,"single_pilot_me":false,"single_pilot_time":47,"multi_pilot_time":0,"total_time_flight":47,"pilot_in_command_name":"Ada Pilot","take_off_day":1,"take_off_night":0,"landing_day":1,"landing_night":0,"op_time_night":0,"op_time_ifr":0,"pilot_time_in_cmd":47,"co_pilot_minutes":0,"pilot_time_dual":0,"pilot_time_inst":0,"synthetic_date":"","synthetic_type":"","synthetic_time":0,"observations":"","comments":"","passengers":[],"files":[]}"""
+                in
+                Decode.decodeString PlaneFcl1080.decoder json
+                    |> Result.map (\log -> { log | synthetic_date = "2011-08-02T00:00:00" })
+                    |> Result.map PlaneFcl1080.encodeReplace
+                    |> Result.andThen
+                        (\value ->
+                            Decode.decodeString (Decode.field "synthetic_date" Decode.string) (Encode.encode 0 value)
+                        )
+                    |> Expect.equal (Ok "2011-08-02T00:00:00")
         ]

@@ -493,7 +493,8 @@
           },
           "synthetic_date": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "nullable": true
           },
           "synthetic_type": {
             "type": "string"
@@ -593,7 +594,8 @@
           },
           "synthetic_date": {
             "type": "string",
-            "format": "date-time"
+            "format": "date-time",
+            "nullable": true
           },
           "synthetic_type": {
             "type": "string"
