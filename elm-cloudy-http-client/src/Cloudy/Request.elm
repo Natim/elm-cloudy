@@ -1,4 +1,4 @@
-module Cloudy.Request exposing (Request(..), delete, get, patch, post, put, send, sendEmpty)
+module Cloudy.Request exposing (Request(..), delete, get, patch, post, postMultipart, put, send, sendEmpty)
 
 import Cloudy.Client exposing (Client, authHeader)
 import Cloudy.Internal.Url as Url
@@ -80,6 +80,18 @@ post client path value decoder =
         , path = path
         , query = []
         , body = Http.jsonBody value
+        , decoder = decoder
+        }
+
+
+postMultipart : Client -> List String -> List Http.Part -> Decode.Decoder a -> Request a
+postMultipart client path parts decoder =
+    JsonRequest
+        { client = client
+        , method = "POST"
+        , path = path
+        , query = []
+        , body = Http.multipartBody parts
         , decoder = decoder
         }
 

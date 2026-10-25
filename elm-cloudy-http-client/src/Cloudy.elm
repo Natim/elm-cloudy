@@ -4,6 +4,7 @@ module Cloudy exposing
     , createLogbook
     , deleteAircraft
     , deleteLog
+    , deleteLogFile
     , getLog
     , getLogbook
     , getReports
@@ -17,12 +18,14 @@ module Cloudy exposing
     , replaceLog
     , replaceReports
     , token
+    , uploadLogFile
     )
 
 import Cloudy.Aircraft as AircraftApi
 import Cloudy.Auth as AuthApi
 import Cloudy.Client exposing (Client)
 import Cloudy.Data.Aircraft as Aircraft
+import Cloudy.Data.AttachedFile as AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log as Log exposing (LogEntry)
 import Cloudy.Data.LogListPage as LogListPage exposing (LogListPage)
 import Cloudy.Data.Logbook as Logbook exposing (Logbook, LogbookCreate, LogbookPatch)
@@ -33,6 +36,7 @@ import Cloudy.Logbooks as Logbooks
 import Cloudy.Logs as Logs exposing (ListQuery)
 import Cloudy.Reports as Reports
 import Cloudy.Request exposing (Request(..))
+import File
 import Json.Encode as Encode
 
 
@@ -89,6 +93,16 @@ patchLog =
 deleteLog : Client -> Int -> Int -> Request ()
 deleteLog =
     Logs.remove
+
+
+uploadLogFile : Client -> Int -> Int -> File.File -> Request AttachedFile
+uploadLogFile =
+    Logs.upload
+
+
+deleteLogFile : Client -> Int -> Int -> Int -> Request ()
+deleteLogFile =
+    Logs.removeFile
 
 
 listAircraft : Client -> Int -> Request (List Aircraft.Aircraft)

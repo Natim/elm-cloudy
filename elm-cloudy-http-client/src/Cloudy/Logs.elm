@@ -1,10 +1,13 @@
-module Cloudy.Logs exposing (ListQuery, create, get, list, patch, remove, replace)
+module Cloudy.Logs exposing (ListQuery, create, get, list, patch, remove, removeFile, replace, upload)
 
 import Cloudy.Client exposing (Client)
+import Cloudy.Data.AttachedFile as AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log as Log exposing (LogEntry)
 import Cloudy.Data.LogListPage as LogListPage exposing (LogListPage)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
 import Cloudy.Request as Request exposing (Request(..))
+import File
+import Http
 import Json.Encode as Encode
 
 
@@ -53,3 +56,19 @@ patch client category logbookId logId body =
 remove : Client -> Int -> Int -> Request ()
 remove client logbookId logId =
     Request.delete client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ]
+
+
+upload : Client -> Int -> Int -> File.File -> Request AttachedFile
+upload client logbookId logId file =
+    Request.postMultipart
+        client
+        [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId, "files" ]
+        [ Http.filePart "file" file ]
+        AttachedFile.decoder
+
+
+removeFile : Client -> Int -> Int -> Int -> Request ()
+removeFile client logbookId logId fileId =
+    Request.delete
+        client
+        [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId, "files", String.fromInt fileId ]

@@ -4,7 +4,7 @@ Offline-first mobile PWA for quick Cloudy logbook entries. It compiles the HTTP 
 
 ## Development
 
-Requires Elm **0.19.1** (see root CI).
+Requires Elm **0.19.2** (see root CI).
 
 ```bash
 npm install

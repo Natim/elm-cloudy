@@ -1,6 +1,7 @@
 module Tests exposing (tests)
 
 import Cloudy.Data.ApiErrorBody as ApiErrorBody
+import Cloudy.Data.AttachedFile as AttachedFile
 import Cloudy.Data.Log as Log
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
@@ -18,6 +19,15 @@ tests =
             \_ ->
                 LogbookCategory.fromString "plane_dgac"
                     |> Expect.equal (Just LogbookCategory.PlaneDgac)
+        , test "decodes attached file upload response" <|
+            \_ ->
+                let
+                    json =
+                        """{"id":7,"url":"/media/upload/scan.jpg"}"""
+                in
+                Decode.decodeString AttachedFile.decoder json
+                    |> Result.map (\file -> ( file.id, file.url ))
+                    |> Expect.equal (Ok ( 7, "/media/upload/scan.jpg" ))
         , test "decodes API error body" <|
             \_ ->
                 let
