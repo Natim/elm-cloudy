@@ -1,6 +1,7 @@
 module Tests exposing (tests)
 
 import Cloudy.Data.ApiErrorBody as ApiErrorBody
+import Cloudy.Data.Log as Log
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.LogListPage as LogListPage
@@ -35,6 +36,23 @@ tests =
                 Decode.decodeString (LogListPage.decoder LogbookCategory.PlaneDgac) json
                     |> Result.map .nextPageToken
                     |> Expect.equal (Ok Nothing)
+        , test "decodes a log wrapped in a log field" <|
+            \_ ->
+                let
+                    json =
+                        """{"log":{"logbook_id":1,"id":2,"visible":true,"deleted":false,"flight_date":"2011-07-04T12:00:00","updated_at":"2011-07-04T12:00:00","created_at":"2011-07-04T12:00:00","optional_filter":"","aircraft_type":"T1","aircraft_registration":"M1","function_on_board":"EP","flight_nature":"N1","crew_day_minutes":0,"crew_night_minutes":1,"single_engine_day_dual_minutes":0,"single_engine_day_captain_minutes":0,"single_engine_night_dual_minutes":0,"single_engine_night_captain_minutes":0,"multi_engine_day_dual_minutes":0,"multi_engine_day_captain_minutes":0,"multi_engine_day_co_pilot_minutes":0,"multi_engine_night_dual_minutes":0,"multi_engine_night_captain_minutes":0,"multi_engine_night_co_pilot_minutes":0,"instrument_day_dual_minutes":0,"instrument_pilot_minutes":0,"simulator_minutes":0,"ifr":0,"observations":"","comments":"","takeoff_count":0,"landing_count":0,"departure_airport":"","arrival_airport":"","passengers":[],"files":[]}}"""
+                in
+                Decode.decodeString (Log.responseDecoder LogbookCategory.PlaneDgac) json
+                    |> Result.map
+                        (\entry ->
+                            case entry of
+                                Log.PlaneDgacEntry log ->
+                                    log.flight_nature
+
+                                _ ->
+                                    ""
+                        )
+                    |> Expect.equal (Ok "N1")
         , test "decodes plane dgac log snippet" <|
             \_ ->
                 let

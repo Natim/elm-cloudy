@@ -32,22 +32,22 @@ list client category logbookId query =
 
 get : Client -> LogbookCategory -> Int -> Int -> Request LogEntry
 get client category logbookId logId =
-    Request.get client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] [] (Log.decoder category)
+    Request.get client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] [] (Log.responseDecoder category)
 
 
 create : Client -> Int -> LogEntry -> Request LogEntry
 create client logbookId entry =
-    Request.post client [ "logbooks", String.fromInt logbookId, "logs" ] (Log.encodeCreate entry) (Log.decoderFromEntry entry)
+    Request.post client [ "logbooks", String.fromInt logbookId, "logs" ] (Log.encodeCreate entry) (Log.responseDecoderFromEntry entry)
 
 
 replace : Client -> LogbookCategory -> Int -> Int -> LogEntry -> Request LogEntry
 replace client category logbookId logId entry =
-    Request.put client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] (Log.encodeReplace entry) (Log.decoder category)
+    Request.put client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] (Log.encodeReplace entry) (Log.responseDecoder category)
 
 
 patch : Client -> LogbookCategory -> Int -> Int -> Encode.Value -> Request LogEntry
 patch client category logbookId logId body =
-    Request.patch client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] body (Log.decoder category)
+    Request.patch client [ "logbooks", String.fromInt logbookId, "logs", String.fromInt logId ] body (Log.responseDecoder category)
 
 
 remove : Client -> Int -> Int -> Request ()

@@ -1,4 +1,4 @@
-module Cloudy.Data.Log exposing (LogEntry(..), decoder, decoderFromEntry, encodeCreate, encodePatch, encodeReplace)
+module Cloudy.Data.Log exposing (LogEntry(..), decoder, decoderFromEntry, encodeCreate, encodePatch, encodeReplace, responseDecoder, responseDecoderFromEntry)
 
 import Cloudy.Data.Log.BalloonDgac as BalloonDgac
 import Cloudy.Data.Log.GliderDgac as GliderDgac
@@ -19,6 +19,11 @@ type LogEntry
     | UlmFfplumEntry UlmFfplum.Log
     | BalloonDgacEntry BalloonDgac.Log
     | ParachuteCloudyEntry ParachuteCloudy.Log
+
+
+responseDecoder : LogbookCategory -> Decoder LogEntry
+responseDecoder category =
+    Decode.field "log" (decoder category)
 
 
 decoder : LogbookCategory -> Decoder LogEntry
@@ -99,6 +104,11 @@ encodeReplace entry =
 encodePatch : LogbookCategory -> Value -> Value
 encodePatch _ body =
     body
+
+
+responseDecoderFromEntry : LogEntry -> Decoder LogEntry
+responseDecoderFromEntry entry =
+    Decode.field "log" (decoderFromEntry entry)
 
 
 decoderFromEntry : LogEntry -> Decoder LogEntry
