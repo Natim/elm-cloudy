@@ -94,6 +94,97 @@ all =
 
                         Nothing ->
                             Expect.fail "missing log"
+            , test "create success drops the server copy of the new flight" <|
+                \_ ->
+                    let
+                        entry =
+                            LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 "2020-01-01T12:00:00"
+
+                        localLog =
+                            { clientId = "c-1"
+                            , serverId = Nothing
+                            , syncStatus = PendingCreate
+                            , category = LogbookCategory.PlaneDgac
+                            , entry = entry
+                            }
+
+                        serverCopy =
+                            { clientId = "s-99"
+                            , serverId = Just 99
+                            , syncStatus = Synced
+                            , category = LogbookCategory.PlaneDgac
+                            , entry = entry
+                            }
+
+                        updated =
+                            Outbox.applyCreateSuccess "c-1" 99 entry [ serverCopy, localLog ]
+                    in
+                    Expect.equal [ "c-1" ] (List.map .clientId updated)
+            , test "a pending update is not listed twice when the server page arrives" <|
+                \_ ->
+                    let
+                        entry =
+                            LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 "2020-01-01T12:00:00"
+
+                        pending =
+                            { clientId = "s-7"
+                            , serverId = Just 7
+                            , syncStatus = PendingUpdate
+                            , category = LogbookCategory.PlaneDgac
+                            , entry = entry
+                            }
+
+                        serverCopy =
+                            { pending | syncStatus = Synced }
+
+                        other =
+                            { clientId = "s-8"
+                            , serverId = Just 8
+                            , syncStatus = Synced
+                            , category = LogbookCategory.PlaneDgac
+                            , entry = entry
+                            }
+
+                        merged =
+                            Outbox.mergeServerPage True [ serverCopy, other ] [ pending ]
+                    in
+                    Expect.equal [ ( Just 7, PendingUpdate ), ( Just 8, Synced ) ]
+                        (List.map (\log -> ( log.serverId, log.syncStatus )) merged)
+            , test "replace success keeps a single synced flight" <|
+                \_ ->
+                    let
+                        entry =
+                            case LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 "2020-01-01T12:00:00" of
+                                PlaneDgacEntry log ->
+                                    PlaneDgacEntry { log | id = 7 }
+
+                                other ->
+                                    other
+
+                        pending =
+                            { clientId = "s-7"
+                            , serverId = Just 7
+                            , syncStatus = PendingUpdate
+                            , category = LogbookCategory.PlaneDgac
+                            , entry = entry
+                            }
+
+                        serverCopy =
+                            { pending | clientId = "s-7b", syncStatus = Synced }
+
+                        updated =
+                            Outbox.applyReplaceSuccess 7 entry [ pending, serverCopy ]
+                    in
+                    case updated of
+                        [ log ] ->
+                            Expect.all
+                                [ \_ -> Expect.equal Synced log.syncStatus
+                                , \_ -> Expect.equal (Just 7) log.serverId
+                                ]
+                                log
+
+                        _ ->
+                            Expect.fail "expected one flight"
             , test "dropHead removes first op" <|
                 \_ ->
                     Expect.equal

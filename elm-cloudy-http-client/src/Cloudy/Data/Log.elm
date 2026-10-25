@@ -23,7 +23,10 @@ type LogEntry
 
 responseDecoder : LogbookCategory -> Decoder LogEntry
 responseDecoder category =
-    Decode.field "log" (decoder category)
+    Decode.oneOf
+        [ decoder category
+        , Decode.field "log" (decoder category)
+        ]
 
 
 decoder : LogbookCategory -> Decoder LogEntry
@@ -108,7 +111,10 @@ encodePatch _ body =
 
 responseDecoderFromEntry : LogEntry -> Decoder LogEntry
 responseDecoderFromEntry entry =
-    Decode.field "log" (decoderFromEntry entry)
+    Decode.oneOf
+        [ decoderFromEntry entry
+        , Decode.field "log" (decoderFromEntry entry)
+        ]
 
 
 decoderFromEntry : LogEntry -> Decoder LogEntry

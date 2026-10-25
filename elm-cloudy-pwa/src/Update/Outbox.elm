@@ -88,13 +88,26 @@ update msg model =
 
         GotReplace result ->
             case result of
-                Ok _ ->
+                Ok entry ->
                     let
-                        outbox =
-                            Outbox.dropHead model.outbox
+                        ( logs, outbox ) =
+                            case Outbox.head model.outbox of
+                                Just (Outbox.ReplaceOp payload) ->
+                                    ( Dict.update (String.fromInt payload.logbookId)
+                                        (Maybe.map (Outbox.applyReplaceSuccess payload.serverId entry))
+                                        model.logs
+                                    , Outbox.dropHead model.outbox
+                                    )
+
+                                _ ->
+                                    ( model.logs, Outbox.dropHead model.outbox )
                     in
-                    { model = { model | outbox = outbox, busy = False }
-                    , outboxCmd = Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
+                    { model = { model | logs = logs, outbox = outbox, busy = False }
+                    , outboxCmd =
+                        Cmd.batch
+                            [ Support.persistLogs logs
+                            , Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
+                            ]
                     , editorCmd = Cmd.none
                     , effects = [ FlushOutbox ]
                     }

@@ -145,17 +145,5 @@ appendLogPage key replace incoming logs =
     let
         existing =
             Dict.get key logs |> Maybe.withDefault []
-
-        pending =
-            List.filter (\log -> log.syncStatus /= LocalLog.Synced) existing
-
-        previous =
-            List.filter (\log -> log.syncStatus == LocalLog.Synced) existing
     in
-    pending
-        ++ (if replace then
-                incoming
-
-            else
-                previous ++ incoming
-           )
+    Outbox.mergeServerPage replace incoming existing

@@ -1,6 +1,7 @@
 module Outbox exposing
     ( OutboxOp(..)
     , applyCreateSuccess
+    , applyReplaceSuccess
     , decodeOp
     , dropHead
     , encodeOp
@@ -8,6 +9,7 @@ module Outbox exposing
     , enqueueReplace
     , head
     , markHeadFailed
+    , mergeServerPage
     )
 
 import Cloudy.Data.Log as Log exposing (LogEntry)
@@ -16,6 +18,7 @@ import Json.Decode as Decode exposing (Decoder)
 import Json.Encode as Encode exposing (Value)
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
+import Set
 
 
 type OutboxOp
@@ -61,13 +64,86 @@ enqueueReplace category serverId entry ops =
 
 applyCreateSuccess : String -> Int -> LogEntry -> List LocalLog -> List LocalLog
 applyCreateSuccess clientId serverId entry logs =
-    List.map
+    let
+        serverKey =
+            "s-" ++ String.fromInt serverId
+    in
+    List.filterMap
         (\log ->
             if log.clientId == clientId then
-                { log | serverId = Just serverId, syncStatus = Synced, entry = entry }
+                Just { log | serverId = Just serverId, syncStatus = Synced, entry = entry }
+
+            else if log.serverId == Just serverId || log.clientId == serverKey then
+                Nothing
 
             else
-                log
+                Just log
+        )
+        logs
+
+
+applyReplaceSuccess : Int -> LogEntry -> List LocalLog -> List LocalLog
+applyReplaceSuccess serverId entry logs =
+    let
+        savedId =
+            LogHelpers.serverId entry
+
+        same log =
+            log.serverId == Just serverId || log.serverId == Just savedId
+    in
+    case List.filter same logs of
+        [] ->
+            logs
+
+        kept :: _ ->
+            { kept | serverId = Just savedId, syncStatus = Synced, entry = entry }
+                :: List.filter (\log -> not (same log)) logs
+
+
+mergeServerPage : Bool -> List LocalLog -> List LocalLog -> List LocalLog
+mergeServerPage replace incoming existing =
+    let
+        pending =
+            List.filter (\log -> log.syncStatus /= Synced) existing
+
+        previous =
+            List.filter (\log -> log.syncStatus == Synced) existing
+
+        base =
+            if replace then
+                pending
+
+            else
+                pending ++ previous
+    in
+    base ++ dropKnown (serverIds base) incoming
+
+
+serverIds : List LocalLog -> Set.Set Int
+serverIds logs =
+    List.foldl
+        (\log ids ->
+            case log.serverId of
+                Just id ->
+                    Set.insert id ids
+
+                Nothing ->
+                    ids
+        )
+        Set.empty
+        logs
+
+
+dropKnown : Set.Set Int -> List LocalLog -> List LocalLog
+dropKnown ids logs =
+    List.filter
+        (\log ->
+            case log.serverId of
+                Just id ->
+                    not (Set.member id ids)
+
+                Nothing ->
+                    True
         )
         logs
 

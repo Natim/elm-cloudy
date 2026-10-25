@@ -63,6 +63,23 @@ tests =
                                     ""
                         )
                     |> Expect.equal (Ok "N1")
+        , test "decodes a log returned directly by the API" <|
+            \_ ->
+                let
+                    json =
+                        """{"logbook_id":1,"id":2,"visible":true,"deleted":false,"flight_date":"2011-07-04T12:00:00","updated_at":"2011-07-04T12:00:00","created_at":"2011-07-04T12:00:00","optional_filter":"","aircraft_type":"T1","aircraft_registration":"M1","function_on_board":"EP","flight_nature":"N1","crew_day_minutes":0,"crew_night_minutes":1,"single_engine_day_dual_minutes":0,"single_engine_day_captain_minutes":0,"single_engine_night_dual_minutes":0,"single_engine_night_captain_minutes":0,"multi_engine_day_dual_minutes":0,"multi_engine_day_captain_minutes":0,"multi_engine_day_co_pilot_minutes":0,"multi_engine_night_dual_minutes":0,"multi_engine_night_captain_minutes":0,"multi_engine_night_co_pilot_minutes":0,"instrument_day_dual_minutes":0,"instrument_pilot_minutes":0,"simulator_minutes":0,"ifr":0,"observations":"","comments":"","takeoff_count":0,"landing_count":0,"departure_airport":"","arrival_airport":"","passengers":[],"files":[]}"""
+                in
+                Decode.decodeString (Log.responseDecoder LogbookCategory.PlaneDgac) json
+                    |> Result.map
+                        (\entry ->
+                            case entry of
+                                Log.PlaneDgacEntry log ->
+                                    log.id
+
+                                _ ->
+                                    0
+                        )
+                    |> Expect.equal (Ok 2)
         , test "decodes plane dgac log snippet" <|
             \_ ->
                 let
