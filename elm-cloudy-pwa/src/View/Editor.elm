@@ -38,8 +38,8 @@ view planes entry dates filesInput onChange onSave onCancel =
     div [ class "editor" ]
         [ div [ class "card" ]
             [ h1 [] [ text "Vol" ]
-            , filesField filesInput (LogHelpers.files entry)
             , body planes entry dates onChange
+            , filesField filesInput (LogHelpers.files entry)
             , div [ class "form-actions" ]
                 [ button [ type_ "button", class "btn", onClick onSave ] [ text "Enregistrer" ]
                 , button [ type_ "button", class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
@@ -77,7 +77,6 @@ planeForm : List Aircraft -> PlaneDgac.Log -> DateInput msg -> (PlaneDgac.Log ->
 planeForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
-        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , registrationField planes
             { registration = log.aircraft_registration
             , aircraftType = log.aircraft_type
@@ -93,6 +92,7 @@ planeForm planes log dates onChange =
                         , arrival_airport = filled.arrival
                     }
             )
+        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , selectField "Fonction" log.function_on_board planeFunctions (\v -> onChange { log | function_on_board = v })
         , field "Nature du vol" log.flight_nature (\v -> onChange { log | flight_nature = v })
         , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
@@ -113,7 +113,6 @@ gliderForm : List Aircraft -> GliderDgac.Log -> DateInput msg -> (GliderDgac.Log
 gliderForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
-        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , registrationField planes
             { registration = log.aircraft_registration
             , aircraftType = log.aircraft_type
@@ -129,6 +128,7 @@ gliderForm planes log dates onChange =
                         , arrival_airport = filled.arrival
                     }
             )
+        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , selectField "Fonction" log.function_on_board gliderFunctions (\v -> onChange { log | function_on_board = v })
         , selectField "Nature" log.flight_nature gliderNature (\v -> onChange { log | flight_nature = v })
         , selectField "Lancement" log.lmode launchModes (\v -> onChange { log | lmode = v })
@@ -145,7 +145,6 @@ ulmForm : List Aircraft -> UlmFfplum.Log -> DateInput msg -> (UlmFfplum.Log -> m
 ulmForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
-        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , registrationField planes
             { registration = log.aircraft_registration
             , aircraftType = log.aircraft_type
@@ -161,6 +160,7 @@ ulmForm planes log dates onChange =
                         , arrival_airport = filled.arrival
                     }
             )
+        , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
         , field "Arrivée" log.arrival_airport (\v -> onChange { log | arrival_airport = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
@@ -175,7 +175,6 @@ balloonForm : List Aircraft -> BalloonDgac.Log -> DateInput msg -> (BalloonDgac.
 balloonForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
-        , field "Type" log.ballon_type (\v -> onChange { log | ballon_type = v })
         , registrationField planes
             { registration = log.ballon_imma
             , aircraftType = log.ballon_type
@@ -191,6 +190,7 @@ balloonForm planes log dates onChange =
                         , arrival_airport = filled.arrival
                     }
             )
+        , field "Type" log.ballon_type (\v -> onChange { log | ballon_type = v })
         , field "Départ" log.departure_airport (\v -> onChange { log | departure_airport = v })
         , field "Arrivée" log.arrival_airport (\v -> onChange { log | arrival_airport = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
@@ -214,16 +214,7 @@ fclForm planes log dates onChange =
     div []
         [ dateField log.flight_date dates
         , div [ class "grid-2" ]
-            [ field "Départ" log.departure_place (\v -> onChange { log | departure_place = v })
-            , field "Heure départ" log.departure_time (\v -> onChange { log | departure_time = v })
-            ]
-        , div [ class "grid-2" ]
-            [ field "Arrivée" log.arrival_place (\v -> onChange { log | arrival_place = v })
-            , field "Heure arrivée" log.arrival_time (\v -> onChange { log | arrival_time = v })
-            ]
-        , div [ class "grid-2" ]
-            [ field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
-            , registrationField planes
+            [ registrationField planes
                 { registration = log.aircraft_registration
                 , aircraftType = log.aircraft_type
                 , departure = log.departure_place
@@ -238,6 +229,15 @@ fclForm planes log dates onChange =
                             , arrival_place = filled.arrival
                         }
                 )
+            , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
+            ]
+        , div [ class "grid-2" ]
+            [ field "Départ" log.departure_place (\v -> onChange { log | departure_place = v })
+            , field "Heure départ" log.departure_time (\v -> onChange { log | departure_time = v })
+            ]
+        , div [ class "grid-2" ]
+            [ field "Arrivée" log.arrival_place (\v -> onChange { log | arrival_place = v })
+            , field "Heure arrivée" log.arrival_time (\v -> onChange { log | arrival_time = v })
             ]
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
         , radioField "SE / ME" (singlePilotChoice log) (\choice -> onChange (setSinglePilot log choice))
