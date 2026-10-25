@@ -20,7 +20,12 @@ view model =
         [ statusBar model
         , case model.route of
             Login ->
-                loginView model
+                case model.session of
+                    Just _ ->
+                        logbooksView model
+
+                    Nothing ->
+                        loginView model
 
             Logbooks ->
                 logbooksView model
@@ -179,7 +184,15 @@ editorRoute model logbookId =
     case model.editor of
         Just editor ->
             if editor.logbookId == logbookId then
-                Editor.view editor.localLog.entry EditorChanged SaveEditor CancelEditor
+                Editor.view editor.localLog.entry
+                    { draft = editor.dateDraft
+                    , onText = DateTextChanged
+                    , onPicked = DatePicked
+                    , onBlur = DateTextBlurred
+                    }
+                    EditorChanged
+                    SaveEditor
+                    CancelEditor
 
             else
                 p [ class "shell" ] [ text "Chargement…" ]

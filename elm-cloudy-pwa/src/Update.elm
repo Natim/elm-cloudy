@@ -14,7 +14,7 @@ import Json.Decode
 import Json.Encode as Encode
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
-import Model exposing (Model, Msg(..))
+import Model exposing (EditorState, Model, Msg(..))
 import Outbox exposing (OutboxOp(..))
 import Persisted
 import Ports
@@ -22,6 +22,7 @@ import Route exposing (Route(..))
 import Session
 import StorageCodec
 import Task
+import TimeFormat
 import Url
 
 
@@ -41,17 +42,48 @@ update msg model =
                 route =
                     Route.fromUrl url
 
+                editor =
+                    case ( route, model.editor ) of
+                        ( EditorEdit id clientId, Just current ) ->
+                            if current.logbookId == id && current.localLog.clientId == clientId then
+                                Just current
+
+                            else
+                                Nothing
+
+                        ( EditorNew id, Just current ) ->
+                            if current.logbookId == id then
+                                Just current
+
+                            else
+                                Nothing
+
+                        _ ->
+                            Nothing
+
                 cmd =
                     case route of
                         Logs id ->
                             cmdMsg (RefreshLogs id)
 
                         EditorEdit id clientId ->
-                            cmdMsg (EditLog id clientId)
+                            case editor of
+                                Just _ ->
+                                    Cmd.none
+
+                                Nothing ->
+                                    cmdMsg (EditLog id clientId)
 
                         EditorNew id ->
-                            if model.editor == Nothing then
+                            if editor == Nothing then
                                 cmdMsg (StartNewLog id)
+
+                            else
+                                Cmd.none
+
+                        Login ->
+                            if model.session /= Nothing then
+                                Nav.pushUrl model.key (Route.toPath Logbooks)
 
                             else
                                 Cmd.none
@@ -59,7 +91,7 @@ update msg model =
                         _ ->
                             Cmd.none
             in
-            ( { model | route = route }, cmd )
+            ( { model | route = route, editor = editor }, cmd )
 
         StorageLoaded raw ->
             case Json.Decode.decodeValue Persisted.decoder raw of
@@ -91,6 +123,16 @@ update msg model =
 
                                 Logs id ->
                                     cmdMsg (RefreshLogs id)
+
+                                EditorEdit id clientId ->
+                                    cmdMsg (EditLog id clientId)
+
+                                EditorNew id ->
+                                    if model.editor == Nothing then
+                                        cmdMsg (StartNewLog id)
+
+                                    else
+                                        Cmd.none
 
                                 _ ->
                                     Cmd.none
@@ -284,24 +326,43 @@ update msg model =
                             , entry = entry
                             }
                     in
-                    ( { model | editor = Just { logbookId = logbookId, category = category, localLog = localLog }, pendingNew = Nothing }
-                    , Nav.pushUrl model.key (Route.toPath (EditorNew logbookId))
+                    ( { model | editor = Just { logbookId = logbookId, category = category, localLog = localLog, dateDraft = Nothing }, pendingNew = Nothing }
+                    , if model.route == EditorNew logbookId then
+                        Cmd.none
+
+                      else
+                        Nav.pushUrl model.key (Route.toPath (EditorNew logbookId))
                     )
 
         EditLog logbookId clientId ->
+            let
+                missing =
+                    if model.storageReady && model.route == EditorEdit logbookId clientId then
+                        ( model, Nav.pushUrl model.key (Route.toPath (Logs logbookId)) )
+
+                    else
+                        ( model, Cmd.none )
+
+                open localLog =
+                    ( { model | editor = Just { logbookId = logbookId, category = localLog.category, localLog = localLog, dateDraft = Nothing } }
+                    , if model.route == EditorEdit logbookId clientId then
+                        Cmd.none
+
+                      else
+                        Nav.pushUrl model.key (Route.toPath (EditorEdit logbookId clientId))
+                    )
+            in
             case Dict.get (String.fromInt logbookId) model.logs of
                 Nothing ->
-                    ( model, Cmd.none )
+                    missing
 
                 Just logs ->
                     case List.filter (\l -> l.clientId == clientId) logs |> List.head of
                         Nothing ->
-                            ( model, Cmd.none )
+                            missing
 
                         Just localLog ->
-                            ( { model | editor = Just { logbookId = logbookId, category = localLog.category, localLog = localLog } }
-                            , Nav.pushUrl model.key (Route.toPath (EditorEdit logbookId clientId))
-                            )
+                            open localLog
 
         EditorChanged entry ->
             case model.editor of
@@ -314,6 +375,39 @@ update msg model =
                             editor.localLog
                     in
                     ( { model | editor = Just { editor | localLog = { localLog | entry = entry } } }, Cmd.none )
+
+        DateTextChanged raw ->
+            case model.editor of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just editor ->
+                    let
+                        updated =
+                            case TimeFormat.parseDdMmYyyy raw of
+                                Just isoDay ->
+                                    setEditorDate isoDay { editor | dateDraft = Just raw }
+
+                                Nothing ->
+                                    { editor | dateDraft = Just raw }
+                    in
+                    ( { model | editor = Just updated }, Cmd.none )
+
+        DatePicked isoDay ->
+            case model.editor of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just editor ->
+                    ( { model | editor = Just (setEditorDate isoDay { editor | dateDraft = Nothing }) }, Cmd.none )
+
+        DateTextBlurred ->
+            case model.editor of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just editor ->
+                    ( { model | editor = Just { editor | dateDraft = Nothing } }, Cmd.none )
 
         SaveEditor ->
             case model.editor of
@@ -334,7 +428,7 @@ update msg model =
                         logs =
                             Dict.insert logbookKey (upsertLocal existing localLog) model.logs
                     in
-                    ( { model | editor = Nothing, logs = logs, outbox = outbox }
+                    ( { model | logs = logs, outbox = outbox }
                     , Cmd.batch
                         [ persistLogs logs
                         , Ports.storageSaveOutbox (StorageCodec.encodeOutbox outbox)
@@ -344,7 +438,31 @@ update msg model =
                     )
 
         CancelEditor ->
-            ( { model | editor = Nothing }, Nav.back model.key 1 )
+            let
+                logbookId =
+                    case ( model.editor, model.route ) of
+                        ( Just editor, _ ) ->
+                            editor.logbookId
+
+                        ( _, EditorEdit id _ ) ->
+                            id
+
+                        ( _, EditorNew id ) ->
+                            id
+
+                        ( _, Logs id ) ->
+                            id
+
+                        _ ->
+                            0
+            in
+            ( model
+            , if logbookId == 0 then
+                Nav.pushUrl model.key (Route.toPath Logbooks)
+
+              else
+                Nav.pushUrl model.key (Route.toPath (Logs logbookId))
+            )
 
         FlushOutbox ->
             case ( model.session, model.online, Outbox.head model.outbox ) of
@@ -422,6 +540,18 @@ update msg model =
                 , Nav.pushUrl model.key (Route.toPath Login)
                 ]
             )
+
+
+setEditorDate : String -> EditorState -> EditorState
+setEditorDate isoDay editor =
+    let
+        localLog =
+            editor.localLog
+
+        next =
+            TimeFormat.applyIsoDate isoDay (LogHelpers.flightDate localLog.entry)
+    in
+    { editor | localLog = { localLog | entry = LogHelpers.setFlightDate next localLog.entry } }
 
 
 findLogbook : Model -> Int -> Maybe Logbook.Logbook

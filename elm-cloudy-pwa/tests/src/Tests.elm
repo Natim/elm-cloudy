@@ -20,6 +20,15 @@ all =
             , test "minutesToHhmm pads" <|
                 \_ ->
                     Expect.equal "1:05" (TimeFormat.minutesToHhmm 65)
+            , test "ISO date renders as DD/MM/YYYY" <|
+                \_ ->
+                    Expect.equal "22/10/2026" (TimeFormat.formatDdMmYyyy "2026-10-22T14:12:06.511667+00:00")
+            , test "DD/MM/YYYY parses to an ISO day" <|
+                \_ ->
+                    Expect.equal (Just "2026-10-22") (TimeFormat.parseDdMmYyyy "22/10/2026")
+            , test "changing the day keeps the original time" <|
+                \_ ->
+                    Expect.equal "2026-10-23T14:12:06.511667+00:00" (TimeFormat.applyIsoDate "2026-10-23" "2026-10-22T14:12:06.511667+00:00")
             ]
         , describe "LogbookFormat"
             [ test "short date uses the paper logbook form" <|

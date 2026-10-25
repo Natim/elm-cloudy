@@ -8,54 +8,62 @@ import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
 import Html exposing (Html, button, div, h1, input, option, select, text, textarea)
-import Html.Attributes exposing (class, selected, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes exposing (checked, class, name, placeholder, selected, type_, value)
+import Html.Events exposing (onBlur, onClick, onInput)
 import TimeFormat
 
 
-view : LogEntry -> (LogEntry -> msg) -> msg -> msg -> Html msg
-view entry onChange onSave onCancel =
+type alias DateInput msg =
+    { draft : Maybe String
+    , onText : String -> msg
+    , onPicked : String -> msg
+    , onBlur : msg
+    }
+
+
+view : LogEntry -> DateInput msg -> (LogEntry -> msg) -> msg -> msg -> Html msg
+view entry dates onChange onSave onCancel =
     div [ class "shell" ]
         [ div [ class "card" ]
             [ h1 [] [ text "Vol" ]
-            , body entry onChange
+            , body entry dates onChange
             , div [ class "fab" ]
-                [ button [ class "btn", onClick onSave ] [ text "Enregistrer" ]
-                , button [ class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
+                [ button [ type_ "button", class "btn", onClick onSave ] [ text "Enregistrer" ]
+                , button [ type_ "button", class "btn btn-secondary", onClick onCancel ] [ text "Annuler" ]
                 ]
             ]
         ]
 
 
-body : LogEntry -> (LogEntry -> msg) -> Html msg
-body entry onChange =
+body : LogEntry -> DateInput msg -> (LogEntry -> msg) -> Html msg
+body entry dates onChange =
     case entry of
         PlaneDgacEntry log ->
-            planeForm log (\l -> onChange (PlaneDgacEntry l))
+            planeForm log dates (\l -> onChange (PlaneDgacEntry l))
 
         HelicopterDgacEntry log ->
-            planeForm log (\l -> onChange (HelicopterDgacEntry l))
+            planeForm log dates (\l -> onChange (HelicopterDgacEntry l))
 
         GliderDgacEntry log ->
-            gliderForm log (\l -> onChange (GliderDgacEntry l))
+            gliderForm log dates (\l -> onChange (GliderDgacEntry l))
 
         PlaneFcl1080Entry log ->
-            fclForm log (\l -> onChange (PlaneFcl1080Entry l))
+            fclForm log dates (\l -> onChange (PlaneFcl1080Entry l))
 
         UlmFfplumEntry log ->
-            ulmForm log (\l -> onChange (UlmFfplumEntry l))
+            ulmForm log dates (\l -> onChange (UlmFfplumEntry l))
 
         BalloonDgacEntry log ->
-            balloonForm log (\l -> onChange (BalloonDgacEntry l))
+            balloonForm log dates (\l -> onChange (BalloonDgacEntry l))
 
         ParachuteCloudyEntry log ->
-            parachuteForm log (\l -> onChange (ParachuteCloudyEntry l))
+            parachuteForm log dates (\l -> onChange (ParachuteCloudyEntry l))
 
 
-planeForm : PlaneDgac.Log -> (PlaneDgac.Log -> msg) -> Html msg
-planeForm log onChange =
+planeForm : PlaneDgac.Log -> DateInput msg -> (PlaneDgac.Log -> msg) -> Html msg
+planeForm log dates onChange =
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
+        [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
         , selectField "Fonction" log.function_on_board planeFunctions (\v -> onChange { log | function_on_board = v })
@@ -74,10 +82,10 @@ planeForm log onChange =
         ]
 
 
-gliderForm : GliderDgac.Log -> (GliderDgac.Log -> msg) -> Html msg
-gliderForm log onChange =
+gliderForm : GliderDgac.Log -> DateInput msg -> (GliderDgac.Log -> msg) -> Html msg
+gliderForm log dates onChange =
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
+        [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
         , selectField "Fonction" log.function_on_board gliderFunctions (\v -> onChange { log | function_on_board = v })
@@ -90,10 +98,10 @@ gliderForm log onChange =
         ]
 
 
-ulmForm : UlmFfplum.Log -> (UlmFfplum.Log -> msg) -> Html msg
-ulmForm log onChange =
+ulmForm : UlmFfplum.Log -> DateInput msg -> (UlmFfplum.Log -> msg) -> Html msg
+ulmForm log dates onChange =
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
+        [ dateField log.flight_date dates
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
@@ -104,10 +112,10 @@ ulmForm log onChange =
         ]
 
 
-balloonForm : BalloonDgac.Log -> (BalloonDgac.Log -> msg) -> Html msg
-balloonForm log onChange =
+balloonForm : BalloonDgac.Log -> DateInput msg -> (BalloonDgac.Log -> msg) -> Html msg
+balloonForm log dates onChange =
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
+        [ dateField log.flight_date dates
         , field "Type" log.ballon_type (\v -> onChange { log | ballon_type = v })
         , field "Immatriculation" log.ballon_imma (\v -> onChange { log | ballon_imma = v })
         , timeField "Double (HH:MM)" log.dual_minutes (\v -> onChange { log | dual_minutes = v })
@@ -118,28 +126,41 @@ balloonForm log onChange =
         ]
 
 
-fclForm : PlaneFcl1080.Log -> (PlaneFcl1080.Log -> msg) -> Html msg
-fclForm log onChange =
+fclForm : PlaneFcl1080.Log -> DateInput msg -> (PlaneFcl1080.Log -> msg) -> Html msg
+fclForm log dates onChange =
+    let
+        flightMinutes =
+            if log.total_time_flight /= 0 then
+                log.total_time_flight
+
+            else
+                log.single_pilot_time
+    in
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
-        , field "Départ" log.departure_place (\v -> onChange { log | departure_place = v })
-        , field "Heure départ" log.departure_time (\v -> onChange { log | departure_time = v })
-        , field "Arrivée" log.arrival_place (\v -> onChange { log | arrival_place = v })
-        , field "Heure arrivée" log.arrival_time (\v -> onChange { log | arrival_time = v })
+        [ dateField log.flight_date dates
+        , div [ class "grid-2" ]
+            [ field "Départ" log.departure_place (\v -> onChange { log | departure_place = v })
+            , field "Heure départ" log.departure_time (\v -> onChange { log | departure_time = v })
+            ]
+        , div [ class "grid-2" ]
+            [ field "Arrivée" log.arrival_place (\v -> onChange { log | arrival_place = v })
+            , field "Heure arrivée" log.arrival_time (\v -> onChange { log | arrival_time = v })
+            ]
         , field "Type" log.aircraft_type (\v -> onChange { log | aircraft_type = v })
         , field "Immatriculation" log.aircraft_registration (\v -> onChange { log | aircraft_registration = v })
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
-        , selectField "SE / ME" (singlePilotChoice log) singlePilotOptions (\choice -> onChange (setSinglePilot log choice))
-        , timeField "Mono pilote (HH:MM)" log.single_pilot_time (\v -> onChange { log | single_pilot_time = v })
-        , timeField "Total vol (HH:MM)" log.total_time_flight (\v -> onChange { log | total_time_flight = v })
+        , radioField "SE / ME" (singlePilotChoice log) (\choice -> onChange (setSinglePilot log choice))
+        , timeField "Temps de vol (HH:MM)" flightMinutes (\v -> onChange { log | single_pilot_time = v, total_time_flight = v })
+        , intField "Atterrissages jour" log.landing_day (\v -> onChange { log | landing_day = v })
+        , intField "Atterrissages nuit" log.landing_night (\v -> onChange { log | landing_night = v })
         , textArea "Commentaires" log.comments (\v -> onChange { log | comments = v })
         ]
 
 
-parachuteForm : ParachuteCloudy.Log -> (ParachuteCloudy.Log -> msg) -> Html msg
-parachuteForm log onChange =
+parachuteForm : ParachuteCloudy.Log -> DateInput msg -> (ParachuteCloudy.Log -> msg) -> Html msg
+parachuteForm log dates onChange =
     div []
-        [ field "Date (ISO)" log.flight_date (\v -> onChange { log | flight_date = v })
+        [ dateField log.flight_date dates
         , field "Lieu" log.place (\v -> onChange { log | place = v })
         , field "Aéronef" log.aircraft (\v -> onChange { log | aircraft = v })
         , intField "Altitude sortie" log.altitude (\v -> onChange { log | altitude = v })
@@ -150,11 +171,38 @@ parachuteForm log onChange =
         ]
 
 
+dateField : String -> DateInput msg -> Html msg
+dateField flightDate dates =
+    let
+        shown =
+            Maybe.withDefault (TimeFormat.formatDdMmYyyy flightDate) dates.draft
+    in
+    div [ class "field" ]
+        [ Html.label [] [ text "Date" ]
+        , div [ class "date-row" ]
+            [ input
+                [ type_ "text"
+                , placeholder "JJ/MM/AAAA"
+                , value shown
+                , onInput dates.onText
+                , onBlur dates.onBlur
+                ]
+                []
+            , input
+                [ type_ "date"
+                , value (String.left 10 flightDate)
+                , onInput dates.onPicked
+                ]
+                []
+            ]
+        ]
+
+
 field : String -> String -> (String -> msg) -> Html msg
 field fieldLabel val onInputMsg =
     div [ class "field" ]
         [ Html.label [] [ text fieldLabel ]
-        , input [ class "", value val, onInput onInputMsg ] []
+        , input [ value val, onInput onInputMsg ] []
         ]
 
 
@@ -188,6 +236,29 @@ selectField fieldLabel current options onSelect =
 optionItem : String -> ( String, String ) -> Html msg
 optionItem current ( value_, optionLabel ) =
     option [ value value_, selected (value_ == current) ] [ text optionLabel ]
+
+
+radioField : String -> String -> (String -> msg) -> Html msg
+radioField fieldLabel current onSelect =
+    div [ class "field" ]
+        [ Html.label [] [ text fieldLabel ]
+        , div [ class "radio-row" ]
+            (List.map (radioItem current onSelect) singlePilotOptions)
+        ]
+
+
+radioItem : String -> (String -> msg) -> ( String, String ) -> Html msg
+radioItem current onSelect ( value_, optionLabel ) =
+    Html.label [ class "radio" ]
+        [ input
+            [ type_ "radio"
+            , name "single-pilot"
+            , checked (value_ == current)
+            , onClick (onSelect value_)
+            ]
+            []
+        , text optionLabel
+        ]
 
 
 singlePilotOptions : List ( String, String )

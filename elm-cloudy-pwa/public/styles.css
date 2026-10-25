@@ -239,6 +239,46 @@ h1 {
   gap: 0.65rem;
 }
 
+.date-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.date-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.date-row input[type="date"] {
+  width: 3rem;
+  flex: none;
+  padding-left: 0.45rem;
+  padding-right: 0.35rem;
+  color-scheme: dark;
+}
+
+.radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  min-height: 2.75rem;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.radio input {
+  width: auto;
+  margin: 0;
+}
+
 .status-bar {
   text-align: center;
   font-size: 0.8rem;

@@ -55,6 +55,7 @@ type alias EditorState =
     { logbookId : Int
     , category : LogbookCategory
     , localLog : LocalLog
+    , dateDraft : Maybe String
     }
 
 
@@ -80,6 +81,9 @@ type Msg
     | NowReceived String
     | EditLog Int String
     | EditorChanged LogEntry
+    | DateTextChanged String
+    | DatePicked String
+    | DateTextBlurred
     | SaveEditor
     | CancelEditor
     | FlushOutbox
