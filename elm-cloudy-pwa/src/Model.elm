@@ -45,6 +45,7 @@ type alias LoginForm =
     { email : String
     , password : String
     , baseUrl : String
+    , advancedOpen : Bool
     }
 
 
@@ -63,6 +64,7 @@ type Msg
     | LoginEmailChanged String
     | LoginPasswordChanged String
     | LoginBaseUrlChanged String
+    | LoginAdvancedToggled Bool
     | LoginSubmitted
     | GotToken (Result Http.Error TokenResponse)
     | RefreshLogbooks
@@ -93,7 +95,7 @@ init _ url key =
       , logbooks = []
       , logs = Dict.empty
       , outbox = []
-      , loginForm = { email = "", password = "", baseUrl = "https://www.cloudy.fr/api/v1" }
+      , loginForm = { email = "", password = "", baseUrl = "https://cloudy.fr/api/v1", advancedOpen = False }
       , editor = Nothing
       , error = Nothing
       , busy = False

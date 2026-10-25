@@ -5,7 +5,8 @@ import Cloudy.Data.LogbookCategory as LogbookCategory
 import Dict
 import Html exposing (Html, button, div, h1, h2, p, text)
 import Html.Attributes exposing (class)
-import Html.Events exposing (onClick)
+import Html.Events exposing (on, onClick)
+import Json.Decode as Decode
 import LocalLog exposing (SyncStatus(..))
 import LogHelpers
 import Model exposing (Model, Msg(..))
@@ -65,9 +66,21 @@ loginView model =
                 [ Html.label [] [ text "Mot de passe" ]
                 , Html.input [ Html.Attributes.type_ "password", Html.Attributes.value model.loginForm.password, Html.Events.onInput LoginPasswordChanged ] []
                 ]
-            , div [ class "field" ]
-                [ Html.label [] [ text "API (développement)" ]
-                , Html.input [ Html.Attributes.value model.loginForm.baseUrl, Html.Events.onInput LoginBaseUrlChanged ] []
+            , Html.details
+                (class "advanced"
+                    :: on "toggle" (Decode.at [ "target", "open" ] Decode.bool |> Decode.map LoginAdvancedToggled)
+                    :: (if model.loginForm.advancedOpen then
+                            [ Html.Attributes.attribute "open" "open" ]
+
+                        else
+                            []
+                       )
+                )
+                [ Html.summary [] [ text "Paramètres avancés" ]
+                , div [ class "field" ]
+                    [ Html.label [] [ text "URL de l'API" ]
+                    , Html.input [ Html.Attributes.value model.loginForm.baseUrl, Html.Events.onInput LoginBaseUrlChanged ] []
+                    ]
                 ]
             , button [ class "btn", onClick LoginSubmitted, Html.Attributes.disabled model.busy ] [ text "Se connecter" ]
             , maybeError model.error

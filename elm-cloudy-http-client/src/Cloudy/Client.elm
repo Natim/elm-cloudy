@@ -16,7 +16,7 @@ type alias Client =
 
 default : Client
 default =
-    { baseUrl = "https://www.cloudy.fr/api/v1"
+    { baseUrl = "https://cloudy.fr/api/v1"
     , auth = NoAuth
     }
 

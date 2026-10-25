@@ -120,6 +120,13 @@ update msg model =
             in
             ( { model | loginForm = { form | baseUrl = v } }, Cmd.none )
 
+        LoginAdvancedToggled open ->
+            let
+                form =
+                    model.loginForm
+            in
+            ( { model | loginForm = { form | advancedOpen = open } }, Cmd.none )
+
         LoginSubmitted ->
             let
                 client =

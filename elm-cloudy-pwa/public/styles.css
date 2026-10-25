@@ -77,6 +77,22 @@ h1 {
   resize: vertical;
 }
 
+.advanced {
+  margin: 0 0 1rem;
+}
+
+.advanced summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.85rem;
+  width: fit-content;
+}
+
+.advanced .field {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

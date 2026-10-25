@@ -12,7 +12,7 @@ npm run build:elm   # once, or after Elm changes
 npm run dev         # Vite on http://localhost:5173
 ```
 
-Default API base URL on the login screen is `https://www.cloudy.fr/api/v1`. For local Django, use `http://127.0.0.1:8000/api/v1` and set `CORS_ALLOWED_ORIGINS` accordingly.
+Default API base URL on the login screen is `https://cloudy.fr/api/v1`, hidden under Paramètres avancés. For local Django, use `http://127.0.0.1:8000/api/v1` and set `CORS_ALLOWED_ORIGINS` accordingly.
 
 ## Production build
 
