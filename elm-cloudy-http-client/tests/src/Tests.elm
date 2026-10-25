@@ -2,7 +2,7 @@ module Tests exposing (tests)
 
 import Cloudy.Data.ApiErrorBody as ApiErrorBody
 import Cloudy.Data.AttachedFile as AttachedFile
-import Cloudy.Data.Log as Log
+import Cloudy.Data.Log as Log exposing (LogEntry(..))
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.LogListPage as LogListPage
@@ -81,4 +81,21 @@ tests =
                 Decode.decodeString PlaneFcl1080.decoder json
                     |> Result.map (\log -> ( log.single_pilot_se, log.single_pilot_me, log.single_pilot_time ))
                     |> Expect.equal (Ok ( True, False, 47 ))
+        , test "decodes FCL logs that omit synthetic_date" <|
+            \_ ->
+                let
+                    json =
+                        """{"logbook_id":5389,"id":444797,"visible":true,"deleted":false,"flight_date":"2026-10-22T14:12:06.511667+00:00","updated_at":"2026-10-22T14:12:06.511883+00:00","created_at":"2026-10-22T14:12:06.511667+00:00","optional_filter":"","departure_place":"LFRN","departure_time":"07:45","arrival_place":"LFRN","arrival_time":"08:32","aircraft_type":"PA28","aircraft_registration":"F-GHYZ","single_pilot_se":true,"single_pilot_me":false,"single_pilot_time":47,"multi_pilot_time":0,"total_time_flight":47,"pilot_in_command_name":"SELF","take_off_day":5,"take_off_night":0,"landing_day":5,"landing_night":0,"op_time_night":0,"op_time_ifr":0,"pilot_time_in_cmd":0,"co_pilot_minutes":0,"pilot_time_dual":0,"pilot_time_inst":47,"synthetic_type":"","synthetic_time":0,"observations":"","comments":"","passengers":["Anasthasia Beaujot"],"files":[]}"""
+                in
+                Decode.decodeString (LogListPage.decoder LogbookCategory.PlaneFcl1080) ("{\"items\":[" ++ json ++ "]}")
+                    |> Result.map
+                        (\page ->
+                            case List.head page.items of
+                                Just (PlaneFcl1080Entry log) ->
+                                    ( log.flight_date, log.synthetic_date )
+
+                                _ ->
+                                    ( "", "missing" )
+                        )
+                    |> Expect.equal (Ok ( "2026-10-22T14:12:06.511667+00:00", "" ))
         ]

@@ -116,7 +116,7 @@ decoder =
         |> required "co_pilot_minutes" Decode.int
         |> required "pilot_time_dual" Decode.int
         |> required "pilot_time_inst" Decode.int
-        |> required "synthetic_date" Decode.string
+        |> optional "synthetic_date" Decode.string ""
         |> required "synthetic_type" Decode.string
         |> required "synthetic_time" Decode.int
         |> required "observations" Decode.string

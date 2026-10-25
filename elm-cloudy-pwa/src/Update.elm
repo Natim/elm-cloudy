@@ -9,6 +9,7 @@ import Cloudy.Data.Logbook as Logbook
 import Cloudy.Data.LogbookCategory as LogbookCategory
 import Cloudy.Request as Request
 import Dict
+import Http
 import Json.Decode
 import Json.Encode as Encode
 import LocalLog exposing (LocalLog, SyncStatus(..))
@@ -235,12 +236,12 @@ update msg model =
                         logs =
                             Dict.insert key (pending ++ merged) model.logs
                     in
-                    ( { model | logs = logs, busy = False }
+                    ( { model | logs = logs, busy = False, error = Nothing }
                     , persistLogs logs
                     )
 
-                Err _ ->
-                    ( { model | busy = False }, Cmd.none )
+                Err err ->
+                    ( { model | busy = False, error = Just (httpErrorMessage "vols" err) }, Cmd.none )
 
         GotReports logbookId result ->
             case result of
@@ -478,6 +479,29 @@ upsertLocal logs localLog =
 persistLogs : Dict.Dict String (List LocalLog) -> Cmd Msg
 persistLogs logs =
     Ports.storageSaveLogs (StorageCodec.encodeLogs logs)
+
+
+httpErrorMessage : String -> Http.Error -> String
+httpErrorMessage what err =
+    let
+        detail =
+            case err of
+                Http.BadUrl url ->
+                    "URL invalide : " ++ url
+
+                Http.Timeout ->
+                    "Délai dépassé."
+
+                Http.NetworkError ->
+                    "Erreur réseau."
+
+                Http.BadStatus code ->
+                    "Réponse HTTP " ++ String.fromInt code ++ "."
+
+                Http.BadBody message ->
+                    message
+    in
+    "Impossible de lire les " ++ what ++ ".\n" ++ detail
 
 
 cmdMsg : Msg -> Cmd Msg

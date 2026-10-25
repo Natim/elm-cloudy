@@ -126,8 +126,12 @@ h1 {
 
 .error {
   color: var(--danger);
-  font-size: 0.9rem;
-  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0.75rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 16rem;
+  overflow: auto;
 }
 
 .hint {

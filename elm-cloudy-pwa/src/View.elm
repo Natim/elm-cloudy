@@ -161,6 +161,7 @@ logsView model logbookId =
                     )
                 ]
             ]
+        , maybeError model.error
         , if List.isEmpty logs then
             div [ class "card" ]
                 [ p [] [ text "Aucun vol en cache." ] ]
