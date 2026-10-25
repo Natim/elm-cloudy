@@ -305,6 +305,7 @@ aircraftEditorView model logbookId =
                     , onAskDelete = AskDeleteAircraft
                     , onDelete = DeleteAircraft
                     , onCancel = OpenAircraft
+                    , onPhoto = GotAircraftPhoto
                     }
 
             else

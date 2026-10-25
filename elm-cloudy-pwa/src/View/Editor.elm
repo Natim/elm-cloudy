@@ -243,6 +243,26 @@ fclForm planes log dates onChange =
         , field "PIC" log.pilot_in_command_name (\v -> onChange { log | pilot_in_command_name = v })
         , radioField "SE / ME" (singlePilotChoice log) (\choice -> onChange (setSinglePilot log choice))
         , timeField "Temps de vol (HH:MM)" flightMinutes (\v -> onChange { log | single_pilot_time = v, total_time_flight = v })
+        , p [ class "section-title" ] [ text "Conditions" ]
+        , div [ class "grid-2" ]
+            [ timeField "Nuit" log.op_time_night (\v -> onChange { log | op_time_night = v })
+            , timeField "IFR" log.op_time_ifr (\v -> onChange { log | op_time_ifr = v })
+            ]
+        , p [ class "section-title" ] [ text "Fonction" ]
+        , div [ class "grid-2" ]
+            [ timeField "CDB" log.pilot_time_in_cmd (\v -> onChange { log | pilot_time_in_cmd = v })
+            , timeField "Copilote" log.co_pilot_minutes (\v -> onChange { log | co_pilot_minutes = v })
+            ]
+        , div [ class "grid-2" ]
+            [ timeField "Double" log.pilot_time_dual (\v -> onChange { log | pilot_time_dual = v })
+            , timeField "Instructeur" log.pilot_time_inst (\v -> onChange { log | pilot_time_inst = v })
+            ]
+        , p [ class "section-title" ] [ text "Simulateur" ]
+        , div [ class "grid-2" ]
+            [ field "Date" (String.left 10 log.synthetic_date) (\v -> onChange { log | synthetic_date = v })
+            , field "Type" log.synthetic_type (\v -> onChange { log | synthetic_type = v })
+            ]
+        , timeField "Durée" log.synthetic_time (\v -> onChange { log | synthetic_time = v })
         , div [ class "grid-2" ]
             [ intField "Décollages jour" log.take_off_day (\v -> onChange { log | take_off_day = v })
             , intField "Atterrissages jour" log.landing_day (\v -> onChange { log | landing_day = v })

@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Cloudy
 import Cloudy.Client as Client
 import Cloudy.Data.Aircraft as AircraftData
+import Cloudy.Data.AttachedFile exposing (AttachedFile)
 import Cloudy.Data.Log exposing (LogEntry)
 import Cloudy.Data.LogListPage exposing (LogListPage)
 import Cloudy.Data.Logbook as Logbook
@@ -798,6 +799,8 @@ update msg model =
                         , aircraftType = ""
                         , airport = ""
                         , confirmingDelete = False
+                        , uploadingPhoto = False
+                        , pendingPhoto = Nothing
                         }
                 , pendingAircraft = Nothing
                 , selectedLogbookId = Just logbookId
@@ -839,6 +842,29 @@ update msg model =
 
         AircraftAirportChanged value ->
             updateAircraft (\editor -> { editor | airport = value }) model
+
+        GotAircraftPhoto file ->
+            case ( model.session, model.aircraftEditor, model.online ) of
+                ( Just session, Just editor, True ) ->
+                    case editor.aircraftId of
+                        Just aircraftId ->
+                            ( { model | aircraftEditor = Just { editor | uploadingPhoto = True, pendingPhoto = Nothing }, error = Nothing }
+                            , sendAircraftPhoto session editor.logbookId aircraftId file False
+                            )
+
+                        Nothing ->
+                            ( { model | aircraftEditor = Just { editor | pendingPhoto = Just file }, error = Nothing }
+                            , Cmd.none
+                            )
+
+                ( Just _, Just _, False ) ->
+                    ( { model | error = Just "Connexion requise pour envoyer une photo." }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotAircraftPhotoUpload logbookId aircraftId leaveAfter result ->
+            finishAircraftPhoto logbookId aircraftId leaveAfter result model
 
         SaveAircraft ->
             case ( model.session, model.aircraftEditor ) of
@@ -884,10 +910,34 @@ update msg model =
 
                         list =
                             Dict.get key model.aircraft |> Maybe.withDefault []
+
+                        aircraftDict =
+                            Dict.insert key (upsertAircraft list aircraft) model.aircraft
                     in
-                    ( { model | aircraft = Dict.insert key (upsertAircraft list aircraft) model.aircraft, busy = False, aircraftEditor = Nothing, error = Nothing }
-                    , Nav.pushUrl model.key (Route.toPath (Aircraft logbookId))
-                    )
+                    case ( model.session, model.aircraftEditor |> Maybe.andThen .pendingPhoto ) of
+                        ( Just session, Just file ) ->
+                            ( { model
+                                | aircraft = aircraftDict
+                                , busy = True
+                                , error = Nothing
+                                , aircraftEditor =
+                                    Maybe.map
+                                        (\editor ->
+                                            { editor
+                                                | aircraftId = Just aircraft.id
+                                                , pendingPhoto = Nothing
+                                                , uploadingPhoto = True
+                                            }
+                                        )
+                                        model.aircraftEditor
+                              }
+                            , sendAircraftPhoto session logbookId aircraft.id file True
+                            )
+
+                        _ ->
+                            ( { model | aircraft = aircraftDict, busy = False, aircraftEditor = Nothing, error = Nothing }
+                            , Nav.pushUrl model.key (Route.toPath (Aircraft logbookId))
+                            )
 
                 Err err ->
                     if unauthorized err then
@@ -1129,6 +1179,8 @@ editorFrom logbookId plane =
     , aircraftType = Maybe.withDefault "" plane.aircraftType
     , airport = Maybe.withDefault "" plane.airport
     , confirmingDelete = False
+    , uploadingPhoto = False
+    , pendingPhoto = Nothing
     }
 
 
@@ -1158,6 +1210,71 @@ optionalText raw =
 upsertAircraft : List AircraftData.Aircraft -> AircraftData.Aircraft -> List AircraftData.Aircraft
 upsertAircraft list aircraft =
     aircraft :: List.filter (\item -> item.id /= aircraft.id) list
+
+
+sendAircraftPhoto : Session.Session -> Int -> Int -> File.File -> Bool -> Cmd Msg
+sendAircraftPhoto session logbookId aircraftId file leaveAfter =
+    Cloudy.uploadAircraftPhoto (Session.toClient session) logbookId aircraftId file
+        |> Request.send (GotAircraftPhotoUpload logbookId aircraftId leaveAfter)
+
+
+finishAircraftPhoto : Int -> Int -> Bool -> Result Http.Error AttachedFile -> Model -> ( Model, Cmd Msg )
+finishAircraftPhoto logbookId aircraftId leaveAfter result model =
+    let
+        stopUpload editor =
+            { editor | uploadingPhoto = False }
+    in
+    case result of
+        Ok attached ->
+            let
+                key =
+                    String.fromInt logbookId
+
+                list =
+                    Dict.get key model.aircraft |> Maybe.withDefault []
+
+                aircraft =
+                    Dict.insert key (withPhoto aircraftId attached.url list) model.aircraft
+
+                stillOnForm =
+                    case model.aircraftEditor of
+                        Just editor ->
+                            editor.logbookId == logbookId && editor.aircraftId == Just aircraftId
+
+                        Nothing ->
+                            False
+            in
+            if leaveAfter && stillOnForm then
+                ( { model | aircraft = aircraft, busy = False, aircraftEditor = Nothing, error = Nothing }
+                , Nav.pushUrl model.key (Route.toPath (Aircraft logbookId))
+                )
+
+            else
+                ( { model | aircraft = aircraft, busy = False, aircraftEditor = Maybe.map stopUpload model.aircraftEditor, error = Nothing }
+                , Cmd.none
+                )
+
+        Err err ->
+            if unauthorized err then
+                update Logout { model | busy = False }
+
+            else
+                ( { model | busy = False, aircraftEditor = Maybe.map stopUpload model.aircraftEditor, error = Just "Impossible d'envoyer la photo." }
+                , Cmd.none
+                )
+
+
+withPhoto : Int -> String -> List AircraftData.Aircraft -> List AircraftData.Aircraft
+withPhoto aircraftId url list =
+    List.map
+        (\plane ->
+            if plane.id == aircraftId then
+                { plane | photoUrl = Just url }
+
+            else
+                plane
+        )
+        list
 
 
 saveNewLogThenUpload : File.File -> EditorState -> Model -> ( Model, Cmd Msg )

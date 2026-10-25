@@ -36,8 +36,10 @@ view config =
             , stat "Atterrissages" (maybeCount config.summary.landings)
             ]
         , p [ class "hint" ] [ text (caption config) ]
-        , aircraftCard config.summary.byAircraft
-        , detailsCard config.summary.details
+        , div [ class "card-split" ]
+            [ aircraftCard config.summary.byAircraft
+            , detailsCard config.summary.details
+            ]
         ]
 
 

@@ -18,6 +18,7 @@ module Cloudy exposing
     , replaceLog
     , replaceReports
     , token
+    , uploadAircraftPhoto
     , uploadLogFile
     )
 
@@ -128,6 +129,11 @@ patchAircraft =
 deleteAircraft : Client -> Int -> Int -> Request ()
 deleteAircraft =
     AircraftApi.remove
+
+
+uploadAircraftPhoto : Client -> Int -> Int -> File.File -> Request AttachedFile
+uploadAircraftPhoto =
+    AircraftApi.uploadPhoto
 
 
 getReports : Client -> LogbookCategory -> Int -> Request ReportEntry

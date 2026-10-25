@@ -33,7 +33,7 @@ view category logs report onOpen =
                     ( simpleTable gliderCols Nothing logs onOpen, simpleCards gliderCols Nothing logs onOpen )
 
                 PlaneFcl1080 ->
-                    ( simpleTable fclCols (fclTotals report) logs onOpen, simpleCards fclCols (fclTotals report) logs onOpen )
+                    ( fclTable logs report onOpen, simpleCards fclCols (fclTotals report) logs onOpen )
 
                 UlmFfplum ->
                     ( simpleTable ulmCols (ulmTotals report) logs onOpen, simpleCards ulmCols (ulmTotals report) logs onOpen )
@@ -649,6 +649,52 @@ balloonMinutes pick log =
             ""
 
 
+fclTable : List LocalLog -> Maybe ReportEntry -> (String -> msg) -> Html msg
+fclTable logs report onOpen =
+    table [ class "logbook" ]
+        [ thead []
+            (fclHeader
+                ++ (case fclTotals report of
+                        Just values ->
+                            [ tr [ class "totals" ]
+                                (List.map (\value -> td [ class "time" ] [ text value ]) values)
+                            ]
+
+                        Nothing ->
+                            []
+                   )
+            )
+        , tbody [] (List.map (simpleRow fclCols onOpen) logs)
+        ]
+
+
+fclHeader : List (Html msg)
+fclHeader =
+    [ tr []
+        [ th [ class "col-date", rowspan 2 ] [ text "Date" ]
+        , th [ rowspan 2 ] [ text "Type" ]
+        , th [ rowspan 2 ] [ text "Immat." ]
+        , th [ rowspan 2 ] [ text "Départ" ]
+        , th [ rowspan 2 ] [ text "Arrivée" ]
+        , th [ rowspan 2 ] [ text "Total" ]
+        , th [ colspan 2 ] [ text "Conditions" ]
+        , th [ colspan 4 ] [ text "Fonction" ]
+        , th [ colspan 3 ] [ text "Simulateur" ]
+        ]
+    , tr []
+        [ th [] [ text "Nuit" ]
+        , th [] [ text "IFR" ]
+        , th [] [ text "CDB" ]
+        , th [] [ text "Copilote" ]
+        , th [] [ text "Double" ]
+        , th [] [ text "Instr." ]
+        , th [] [ text "Date" ]
+        , th [] [ text "Type" ]
+        , th [] [ text "Durée" ]
+        ]
+    ]
+
+
 fclCols : List Col
 fclCols =
     [ dateCol
@@ -657,9 +703,15 @@ fclCols =
     , textCol "Départ" "" (fcl .departure_place)
     , textCol "Arrivée" "" (fcl .arrival_place)
     , textCol "Total" "time" (fclMinutes .total_time_flight)
-    , textCol "CDB" "time" (fclMinutes .pilot_time_in_cmd)
-    , textCol "Double" "time" (fclMinutes .pilot_time_dual)
     , textCol "Nuit" "time" (fclMinutes .op_time_night)
+    , textCol "IFR" "time" (fclMinutes .op_time_ifr)
+    , textCol "CDB" "time" (fclMinutes .pilot_time_in_cmd)
+    , textCol "Copilote" "time" (fclMinutes .co_pilot_minutes)
+    , textCol "Double" "time" (fclMinutes .pilot_time_dual)
+    , textCol "Instr." "time" (fclMinutes .pilot_time_inst)
+    , textCol "Date simu" "" fclSimDate
+    , textCol "Type simu" "" fclSimType
+    , textCol "Simu" "time" (fclMinutes .synthetic_time)
     ]
 
 
@@ -674,9 +726,15 @@ fclTotals report =
                 , ""
                 , ""
                 , LogbookFormat.showReportTime totals.total_time_flight
-                , LogbookFormat.showReportTime totals.pilot_time_in_cmd
-                , LogbookFormat.showReportTime totals.pilot_time_dual
                 , LogbookFormat.showReportTime totals.op_time_night
+                , LogbookFormat.showReportTime totals.op_time_ifr
+                , LogbookFormat.showReportTime totals.pilot_time_in_cmd
+                , LogbookFormat.showReportTime totals.co_pilot_minutes
+                , LogbookFormat.showReportTime totals.pilot_time_dual
+                , LogbookFormat.showReportTime totals.pilot_time_inst
+                , ""
+                , ""
+                , LogbookFormat.showReportTime totals.synthetic_time
                 ]
 
         _ ->
@@ -698,6 +756,30 @@ fclMinutes pick log =
     case log.entry of
         PlaneFcl1080Entry entry ->
             LogbookFormat.showMinutes (pick entry)
+
+        _ ->
+            ""
+
+
+fclSimDate : LocalLog -> String
+fclSimDate log =
+    case log.entry of
+        PlaneFcl1080Entry entry ->
+            if entry.synthetic_time == 0 && String.trim entry.synthetic_type == "" then
+                ""
+
+            else
+                LogbookFormat.shortDate entry.synthetic_date
+
+        _ ->
+            ""
+
+
+fclSimType : LocalLog -> String
+fclSimType log =
+    case log.entry of
+        PlaneFcl1080Entry entry ->
+            entry.synthetic_type
 
         _ ->
             ""

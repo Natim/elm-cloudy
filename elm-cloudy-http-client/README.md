@@ -38,6 +38,7 @@ Typical flow:
 3. `Cloudy.listLogbooks`, `Cloudy.listLogs`, `Cloudy.createLog`, etc.
 4. `Request.send` for JSON responses; `Request.sendEmpty` for `DELETE` (204)
 5. Log attachments: `Cloudy.uploadLogFile client logbookId logId file` (multipart; use `Request.send`), then `Cloudy.deleteLogFile client logbookId logId fileId` (`Request.sendEmpty`)
+6. Aircraft photo: `Cloudy.uploadAircraftPhoto client logbookId aircraftId file` (multipart; use `Request.send`). The newest photo becomes `photo_url`.
 
 OpenAPI snapshot: [`vendor/cloudy-openapi.json`](vendor/cloudy-openapi.json). Regenerate Elm types:
 

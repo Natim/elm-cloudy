@@ -77,6 +77,8 @@ type alias AircraftEditor =
     , aircraftType : String
     , airport : String
     , confirmingDelete : Bool
+    , uploadingPhoto : Bool
+    , pendingPhoto : Maybe File.File
     }
 
 
@@ -122,6 +124,8 @@ type Msg
     | AircraftRegistrationChanged String
     | AircraftTypeChanged String
     | AircraftAirportChanged String
+    | GotAircraftPhoto File.File
+    | GotAircraftPhotoUpload Int Int Bool (Result Http.Error AttachedFile)
     | SaveAircraft
     | GotSavedAircraft Int (Result Http.Error Aircraft)
     | AskDeleteAircraft

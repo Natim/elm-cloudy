@@ -1,9 +1,11 @@
 module View.Aircraft exposing (viewForm, viewList)
 
 import Cloudy.Data.Aircraft exposing (Aircraft)
+import File exposing (File)
 import Html exposing (Html, button, div, h2, img, input, p, span, text)
-import Html.Attributes exposing (alt, class, src, type_, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Attributes exposing (accept, alt, class, disabled, src, type_, value)
+import Html.Events exposing (on, onClick, onInput)
+import Json.Decode as Decode
 import MediaUrl
 import Model exposing (AircraftEditor)
 
@@ -54,9 +56,14 @@ viewForm :
         , onAskDelete : msg
         , onDelete : msg
         , onCancel : msg
+        , onPhoto : File -> msg
         }
     -> Html msg
 viewForm baseUrl editor photoUrl busy msgs =
+    let
+        locked =
+            busy || editor.uploadingPhoto
+    in
     div [ class "editor" ]
         [ div [ class "card" ]
             [ h2 [ class "page-title" ]
@@ -76,11 +83,12 @@ viewForm baseUrl editor photoUrl busy msgs =
 
                 Nothing ->
                     text ""
+            , photoField locked editor msgs.onPhoto
             , field "Immatriculation" editor.registration msgs.onRegistration
             , field "Type" editor.aircraftType msgs.onType
             , field "Aérodrome" editor.airport msgs.onAirport
             , div [ class "form-actions" ]
-                [ button [ type_ "button", class "btn", onClick msgs.onSave, Html.Attributes.disabled busy ] [ text "Enregistrer" ]
+                [ button [ type_ "button", class "btn", onClick msgs.onSave, disabled locked ] [ text "Enregistrer" ]
                 , button [ type_ "button", class "btn btn-secondary", onClick msgs.onCancel ] [ text "Annuler" ]
                 , case editor.aircraftId of
                     Just _ ->
@@ -94,7 +102,7 @@ viewForm baseUrl editor photoUrl busy msgs =
                                  else
                                     msgs.onAskDelete
                                 )
-                            , Html.Attributes.disabled busy
+                            , disabled locked
                             ]
                             [ text
                                 (if editor.confirmingDelete then
@@ -109,6 +117,31 @@ viewForm baseUrl editor photoUrl busy msgs =
                         text ""
                 ]
             ]
+        ]
+
+
+photoField : Bool -> AircraftEditor -> (File -> msg) -> Html msg
+photoField locked editor onPhoto =
+    div [ class "field" ]
+        [ Html.label [] [ text "Photo" ]
+        , input
+            [ type_ "file"
+            , class "file-input"
+            , accept "image/*"
+            , disabled locked
+            , on "change" (Decode.map onPhoto (Decode.at [ "target", "files", "0" ] File.decoder))
+            ]
+            []
+        , if editor.uploadingPhoto then
+            p [ class "hint" ] [ text "Envoi…" ]
+
+          else
+            case editor.pendingPhoto of
+                Just file ->
+                    p [ class "hint" ] [ text ("Sera envoyée à l'enregistrement : " ++ File.name file) ]
+
+                Nothing ->
+                    text ""
         ]
 
 
