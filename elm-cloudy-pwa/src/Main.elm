@@ -1,12 +1,9 @@
 module Main exposing (main)
 
 import Browser exposing (UrlRequest(..))
-import Browser.Navigation as Nav
-import Html exposing (Html)
 import Model exposing (Model, Msg(..), init)
 import Ports
 import Update exposing (update)
-import Url
 import View exposing (view)
 
 

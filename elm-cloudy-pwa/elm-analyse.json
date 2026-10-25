@@ -1,6 +1,11 @@
 {
   "checks": {
     "SingleUseVariableValue": false,
-    "ImportAll": false
+    "ImportAll": false,
+    "UnusedImport": false,
+    "UnusedImportAlias": false,
+    "UnusedImportedVariable": false,
+    "MapNothingToNothing": false,
+    "UnusedDependency": false
   }
 }

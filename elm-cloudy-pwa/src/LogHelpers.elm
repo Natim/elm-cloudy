@@ -1,13 +1,8 @@
 module LogHelpers exposing (emptyEntry, flightDate, logbookId, registration, serverId, setFlightDate, title)
 
-import Cloudy.Data.Log as Log exposing (LogEntry(..))
-import Cloudy.Data.Log.BalloonDgac as BalloonDgac
-import Cloudy.Data.Log.GliderDgac as GliderDgac
-import Cloudy.Data.Log.ParachuteCloudy as ParachuteCloudy
+import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.PlaneDgac as PlaneDgac
-import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
-import Cloudy.Data.Log.UlmFfplum as UlmFfplum
-import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
+import Cloudy.Data.LogbookCategory exposing (LogbookCategory(..))
 
 
 serverId : LogEntry -> Int

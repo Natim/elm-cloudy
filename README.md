@@ -32,6 +32,27 @@ cd elm-cloudy-pwa
 npm run build
 ```
 
+## Pre-commit
+
+Install [pre-commit](https://pre-commit.com/) once, then hooks run on each commit (same `elm-format` and `elm-analyse` steps as CI):
+
+```bash
+pip install pre-commit   # or your OS package
+pre-commit install
+```
+
+Run manually on all files:
+
+```bash
+pre-commit run --all-files
+```
+
+Or only the Elm checks:
+
+```bash
+./scripts/pre-commit-elm-checks.sh
+```
+
 ## License
 
 AGPL-3.0 (see [LICENSE](LICENSE)).

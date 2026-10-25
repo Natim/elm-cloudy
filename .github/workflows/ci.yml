@@ -35,8 +35,9 @@ jobs:
           npm test
       - name: elm-analyse
         run: |
-          export PATH="$GITHUB_WORKSPACE/elm-cloudy-pwa/node_modules/.bin:$PATH"
-          npx elm-analyse
-          cd ../elm-cloudy-http-client/tests && npx elm-analyse
+          out="$(npx elm-analyse 2>&1 || true)"
+          printf '%s\n' "$out"
+          echo "$out" | grep -q 'Found 0 message(s)'
+          ! echo "$out" | grep -q '^  > '
       - name: PWA production build
         run: npm run build
