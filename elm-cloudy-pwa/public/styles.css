@@ -241,3 +241,205 @@ h1 {
   color: var(--muted);
   padding: 0.5rem;
 }
+
+.shell-logbook {
+  max-width: 960px;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.logbook-scroll {
+  display: none;
+  overflow-x: auto;
+  margin: 0 -0.5rem 1rem;
+  background: #f4f7fb;
+  border: 1px solid #d5dee8;
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.log-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.log-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.8rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #d5dee8;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.log-card-top,
+.log-card-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.log-card-date,
+.log-card-reg {
+  font-weight: 700;
+}
+
+.log-card-role {
+  color: #475569;
+  flex: none;
+}
+
+.log-card-nature {
+  min-width: 0;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.log-card-times {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.65rem 1rem;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.log-card small,
+.log-totals small {
+  display: block;
+  font-size: 0.68rem;
+  font-weight: 550;
+  color: #64748b;
+}
+
+.log-card.pending {
+  box-shadow: inset 3px 0 0 #d97706;
+}
+
+.log-totals {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem 1rem;
+  max-width: 100%;
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  background: #e7eef5;
+  color: #1e293b;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.log-totals span {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+@media (min-width: 840px) {
+  .logbook-scroll {
+    display: block;
+  }
+
+  .log-cards {
+    display: none;
+  }
+}
+
+.logbook {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 760px;
+  color: #1e293b;
+  background: #fff;
+  font-size: 0.78rem;
+}
+
+.logbook th,
+.logbook td {
+  border: 1px solid #d5dee8;
+  padding: 0.4rem 0.45rem;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.logbook th {
+  background: #e7eef5;
+  font-size: 0.68rem;
+  font-weight: 650;
+  color: #334155;
+  line-height: 1.25;
+}
+
+.logbook .nature {
+  text-align: left;
+  white-space: normal;
+  min-width: 9rem;
+  max-width: 14rem;
+}
+
+.logbook .time {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  min-width: 3.1rem;
+}
+
+.logbook .col-date {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #fff;
+  box-shadow: 1px 0 0 #d5dee8;
+  min-width: 3.4rem;
+}
+
+.logbook th.col-date {
+  z-index: 2;
+  background: #e7eef5;
+}
+
+.logbook tbody tr {
+  cursor: pointer;
+}
+
+.logbook tbody tr:nth-child(even) {
+  background: #f3f8fc;
+}
+
+.logbook tbody tr:nth-child(even) .col-date {
+  background: #f3f8fc;
+}
+
+.logbook tbody tr:hover {
+  background: #e0f2fe;
+}
+
+.logbook tbody tr:hover .col-date {
+  background: #e0f2fe;
+}
+
+.logbook tr.totals td {
+  background: #e7eef5;
+  font-weight: 700;
+  cursor: default;
+}
+
+.logbook tr.totals .col-date {
+  background: #e7eef5;
+}
+
+.logbook tr.pending .col-date {
+  box-shadow: inset 3px 0 0 #d97706, 1px 0 0 #d5dee8;
+}

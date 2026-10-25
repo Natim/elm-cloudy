@@ -4,6 +4,7 @@ import Cloudy.Data.LogbookCategory as LogbookCategory
 import Expect
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
+import LogbookFormat
 import Outbox
 import Test exposing (Test, describe, test)
 import TimeFormat
@@ -19,6 +20,29 @@ all =
             , test "minutesToHhmm pads" <|
                 \_ ->
                     Expect.equal "1:05" (TimeFormat.minutesToHhmm 65)
+            ]
+        , describe "LogbookFormat"
+            [ test "short date uses the paper logbook form" <|
+                \_ ->
+                    Expect.equal "7 sep" (LogbookFormat.shortDate "2026-09-07T12:00:00")
+            , test "route replaces nature when both airports are set" <|
+                \_ ->
+                    Expect.equal "LFKA - LFLV" (LogbookFormat.flightLabel "LFKA" "LFLV" "Nav" "")
+            , test "nature is kept when there is no route" <|
+                \_ ->
+                    Expect.equal "Vol Local Intégration Triple-A" (LogbookFormat.flightLabel "" "" "Vol Local Intégration Triple-A" "")
+            , test "zero minutes stay blank" <|
+                \_ ->
+                    Expect.equal "" (LogbookFormat.showMinutes 0)
+            , test "minutes render as H:MM" <|
+                \_ ->
+                    Expect.equal "1:36" (LogbookFormat.showMinutes 96)
+            , test "report totals keep non-zero times" <|
+                \_ ->
+                    Expect.equal "209:30" (LogbookFormat.showReportTime "209:30")
+            , test "zero report totals stay blank" <|
+                \_ ->
+                    Expect.equal "" (LogbookFormat.showReportTime "0:00")
             ]
         , describe "Outbox"
             [ test "create success updates matching log" <|

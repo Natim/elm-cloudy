@@ -12,6 +12,7 @@ import Cloudy.Data.Log exposing (LogEntry)
 import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
+import Cloudy.Data.Report exposing (ReportEntry)
 import Cloudy.Data.Token exposing (TokenResponse)
 import Dict
 import Http
@@ -31,6 +32,7 @@ type alias Model =
     , session : Maybe Session
     , logbooks : List Logbook
     , logs : Dict.Dict String (List LocalLog)
+    , reports : Dict.Dict String ReportEntry
     , outbox : List OutboxOp
     , loginForm : LoginForm
     , editor : Maybe EditorState
@@ -73,6 +75,7 @@ type Msg
     | BackToLogbooks
     | RefreshLogs Int
     | GotLogsPage Int LogbookCategory (Result Http.Error LogListPage.LogListPage)
+    | GotReports Int (Result Http.Error ReportEntry)
     | StartNewLog Int
     | NowReceived String
     | EditLog Int String
@@ -94,6 +97,7 @@ init _ url key =
       , session = Nothing
       , logbooks = []
       , logs = Dict.empty
+      , reports = Dict.empty
       , outbox = []
       , loginForm = { email = "", password = "", baseUrl = "https://cloudy.fr/api/v1", advancedOpen = False }
       , editor = Nothing

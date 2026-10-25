@@ -84,11 +84,15 @@ update msg model =
                         Cmd.batch
                             [ cmdMsg RefreshLogbooks
                             , cmdMsg FlushOutbox
-                            , if model.route == Login then
-                                Nav.pushUrl model.key (Route.toPath Logbooks)
+                            , case model.route of
+                                Login ->
+                                    Nav.pushUrl model.key (Route.toPath Logbooks)
 
-                              else
-                                Cmd.none
+                                Logs id ->
+                                    cmdMsg (RefreshLogs id)
+
+                                _ ->
+                                    Cmd.none
                             ]
 
                       else
@@ -197,9 +201,17 @@ update msg model =
         RefreshLogs logbookId ->
             case ( model.session, findLogbook model logbookId ) of
                 ( Just session, Just book ) ->
+                    let
+                        client =
+                            Session.toClient session
+                    in
                     ( { model | busy = True }
-                    , Cloudy.listLogs (Session.toClient session) book.category logbookId { limit = Just 100, pageToken = Nothing, dateFrom = Nothing, dateTo = Nothing }
-                        |> Request.send (GotLogsPage logbookId book.category)
+                    , Cmd.batch
+                        [ Cloudy.listLogs client book.category logbookId { limit = Just 100, pageToken = Nothing, dateFrom = Nothing, dateTo = Nothing }
+                            |> Request.send (GotLogsPage logbookId book.category)
+                        , Cloudy.getReports client book.category logbookId
+                            |> Request.send (GotReports logbookId)
+                        ]
                     )
 
                 _ ->
@@ -229,6 +241,16 @@ update msg model =
 
                 Err _ ->
                     ( { model | busy = False }, Cmd.none )
+
+        GotReports logbookId result ->
+            case result of
+                Ok report ->
+                    ( { model | reports = Dict.insert (String.fromInt logbookId) report model.reports }
+                    , Cmd.none
+                    )
+
+                Err _ ->
+                    ( model, Cmd.none )
 
         StartNewLog logbookId ->
             case findLogbook model logbookId of
@@ -390,7 +412,7 @@ update msg model =
                     ( { model | busy = False }, Cmd.none )
 
         Logout ->
-            ( { model | session = Nothing, route = Login, logbooks = [], logs = Dict.empty, outbox = [] }
+            ( { model | session = Nothing, route = Login, logbooks = [], logs = Dict.empty, reports = Dict.empty, outbox = [] }
             , Cmd.batch
                 [ Ports.storageSaveSession Encode.null
                 , Ports.storageSaveLogbooks (Persisted.encodeLogbooks [])

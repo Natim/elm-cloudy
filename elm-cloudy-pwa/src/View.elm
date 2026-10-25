@@ -1,17 +1,17 @@
 module View exposing (view)
 
 import Cloudy.Data.Logbook exposing (Logbook)
-import Cloudy.Data.LogbookCategory as LogbookCategory
+import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
 import Dict
 import Html exposing (Html, button, div, h1, h2, p, text)
 import Html.Attributes exposing (class)
 import Html.Events exposing (on, onClick)
 import Json.Decode as Decode
 import LocalLog exposing (SyncStatus(..))
-import LogHelpers
 import Model exposing (Model, Msg(..))
 import Route exposing (Route(..))
 import View.Editor as Editor
+import View.Logbook as Logbook
 
 
 view : Model -> Html Msg
@@ -137,33 +137,38 @@ logsView model logbookId =
         logs =
             Dict.get (String.fromInt logbookId) model.logs |> Maybe.withDefault []
 
-        title =
-            findBookName model logbookId
+        book =
+            findBook model logbookId
+
+        category =
+            book
+                |> Maybe.map .category
+                |> Maybe.withDefault
+                    (logs
+                        |> List.head
+                        |> Maybe.map .category
+                        |> Maybe.withDefault PlaneDgac
+                    )
     in
-    div [ class "shell" ]
+    div [ class "shell shell-logbook" ]
         [ div [ class "topbar" ]
             [ button [ class "link-btn", onClick BackToLogbooks ] [ text "←" ]
-            , h2 [] [ text title ]
+            , h2 []
+                [ text
+                    (book
+                        |> Maybe.map .name
+                        |> Maybe.withDefault ("Carnet " ++ String.fromInt logbookId)
+                    )
+                ]
             ]
-        , div [ class "list" ]
-            (List.map (logItem logbookId) logs)
+        , if List.isEmpty logs then
+            div [ class "card" ]
+                [ p [] [ text "Aucun vol en cache." ] ]
+
+          else
+            Logbook.view category logs (Dict.get (String.fromInt logbookId) model.reports) (\clientId -> EditLog logbookId clientId)
         , div [ class "fab" ]
             [ button [ class "btn", onClick (StartNewLog logbookId) ] [ text "Ajouter un vol" ]
-            ]
-        ]
-
-
-logItem : Int -> LocalLog.LocalLog -> Html Msg
-logItem logbookId log =
-    button [ class "list-item", onClick (EditLog logbookId log.clientId) ]
-        [ Html.strong [] [ text (LogHelpers.title log.entry) ]
-        , Html.span []
-            [ text (LocalLog.statusLabel log.syncStatus)
-            , if log.syncStatus /= Synced then
-                Html.span [ class "badge badge-pending" ] [ text "●" ]
-
-              else
-                text ""
             ]
         ]
 
@@ -182,13 +187,11 @@ editorRoute model logbookId =
             p [ class "shell" ] [ text "Chargement…" ]
 
 
-findBookName : Model -> Int -> String
-findBookName model id =
+findBook : Model -> Int -> Maybe Logbook
+findBook model id =
     model.logbooks
         |> List.filter (\b -> b.id == id)
         |> List.head
-        |> Maybe.map .name
-        |> Maybe.withDefault ("Carnet " ++ String.fromInt id)
 
 
 maybeError : Maybe String -> Html Msg
