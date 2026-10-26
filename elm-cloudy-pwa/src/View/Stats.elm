@@ -3,7 +3,7 @@ module View.Stats exposing (Coverage(..), view)
 import Html exposing (Html, button, div, h2, p, span, text)
 import Html.Attributes exposing (class, type_)
 import Html.Events exposing (onClick)
-import Stats exposing (AircraftTotal, Summary)
+import Stats exposing (AircraftTotal, Summary, shownAircraft)
 import TimeFormat
 
 
@@ -76,13 +76,27 @@ caption config =
 
 aircraftCard : List AircraftTotal -> Html msg
 aircraftCard rows =
+    let
+        shown =
+            shownAircraft rows
+    in
     div [ class "card" ]
         [ p [ class "section-title" ] [ text "Par type" ]
         , if List.isEmpty rows then
             p [ class "empty" ] [ text "Aucun vol chargé pour ce carnet." ]
 
+          else if List.isEmpty shown then
+            p [ class "empty" ] [ text "Aucun type n'atteint 5 heures." ]
+
           else
-            div [ class "stat-list" ] (List.map aircraftRow rows)
+            div []
+                [ div [ class "stat-list" ] (List.map aircraftRow shown)
+                , if List.length shown < List.length rows then
+                    p [ class "hint" ] [ text "Les types de moins de 5 h sont masqués." ]
+
+                  else
+                    text ""
+                ]
         ]
 
 

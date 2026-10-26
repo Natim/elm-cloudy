@@ -268,8 +268,32 @@ all =
                         , \_ -> Expect.equal [ ( "Équipage jour", "1:45" ), ( "Instrument", "0:45" ) ] summary.details
                         ]
                         summary
+            , test "keeps short types when there are ten or fewer" <|
+                \_ ->
+                    Stats.shownAircraft (List.map (\n -> typed 60 (String.fromInt n)) (List.range 1 10))
+                        |> List.length
+                        |> Expect.equal 10
+            , test "hides types under five hours when there are more than ten" <|
+                \_ ->
+                    let
+                        rows =
+                            typed 300 "DR400"
+                                :: typed 299 "C172"
+                                :: List.map (\n -> typed 10 ("T" ++ String.fromInt n)) (List.range 1 9)
+                    in
+                    Stats.shownAircraft rows
+                        |> List.map .aircraftType
+                        |> Expect.equal [ "DR400" ]
             ]
         ]
+
+
+typed : Int -> String -> Stats.AircraftTotal
+typed minutes aircraftType =
+    { aircraftType = aircraftType
+    , flights = 1
+    , minutes = minutes
+    }
 
 
 sample : Int -> String -> String -> LocalLog

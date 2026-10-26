@@ -1,4 +1,4 @@
-module Stats exposing (AircraftTotal, Summary, summarize)
+module Stats exposing (AircraftTotal, Summary, shownAircraft, summarize)
 
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.BalloonDgac as BalloonDgac
@@ -245,6 +245,20 @@ aircraftTotals logs =
         |> List.foldl insertAircraft Dict.empty
         |> Dict.values
         |> List.sortBy (\item -> ( -item.minutes, item.aircraftType ))
+
+
+shownAircraft : List AircraftTotal -> List AircraftTotal
+shownAircraft rows =
+    if List.length rows > 10 then
+        List.filter (\row -> row.minutes >= fiveHours) rows
+
+    else
+        rows
+
+
+fiveHours : Int
+fiveHours =
+    5 * 60
 
 
 insertAircraft : LocalLog -> Dict String AircraftTotal -> Dict String AircraftTotal
