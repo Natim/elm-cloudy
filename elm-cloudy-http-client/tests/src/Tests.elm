@@ -7,6 +7,7 @@ import Cloudy.Data.Log.PlaneDgac as PlaneDgac
 import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.LogListPage as LogListPage
 import Cloudy.Data.LogbookCategory as LogbookCategory
+import Cloudy.Data.Profile as Profile
 import Expect
 import Json.Decode as Decode
 import Json.Encode as Encode
@@ -16,7 +17,17 @@ import Test exposing (Test, describe, test)
 tests : Test
 tests =
     describe "Cloudy.Data"
-        [ test "decodes logbook category" <|
+        [ test "decodes a profile avatar" <|
+            \_ ->
+                Decode.decodeString Profile.decoder """{"id":4,"email":"pilot@example.com","avatar_url":"/media/avatars/a.png"}"""
+                    |> Result.map (\profile -> ( profile.id, profile.avatarUrl ))
+                    |> Expect.equal (Ok ( 4, Just "/media/avatars/a.png" ))
+        , test "decodes a missing profile avatar" <|
+            \_ ->
+                Decode.decodeString Profile.decoder """{"id":4,"email":"pilot@example.com","avatar_url":null}"""
+                    |> Result.map .avatarUrl
+                    |> Expect.equal (Ok Nothing)
+        , test "decodes logbook category" <|
             \_ ->
                 LogbookCategory.fromString "plane_dgac"
                     |> Expect.equal (Just LogbookCategory.PlaneDgac)

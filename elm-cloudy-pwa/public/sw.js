@@ -1,4 +1,4 @@
-const CACHE = "elm-cloudy-pwa-v3";
+const CACHE = "elm-cloudy-pwa-v4";
 const ASSETS = [
   "/elm-cloudy/",
   "/elm-cloudy/index.html",
@@ -7,7 +7,8 @@ const ASSETS = [
   "/elm-cloudy/styles.css",
   "/elm-cloudy/ports.js",
   "/elm-cloudy/manifest.webmanifest",
-  "/elm-cloudy/icon.svg",
+  "/elm-cloudy/favicon.ico",
+  "/elm-cloudy/logo.png",
 ];
 
 self.addEventListener("install", (event) => {

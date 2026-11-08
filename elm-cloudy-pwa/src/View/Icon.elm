@@ -1,4 +1,4 @@
-module View.Icon exposing (aircraft, book, dashboard, flights, menu)
+module View.Icon exposing (aircraft, dashboard, flights, menu)
 
 import Html exposing (Html)
 import Html.Attributes exposing (attribute, class)
@@ -12,11 +12,6 @@ dashboard =
 flights : Html msg
 flights =
     icon "M8 3v3M16 3v3M4 9h16M6 5h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"
-
-
-book : Html msg
-book =
-    icon "M5 4.5h11A2.5 2.5 0 0 1 18.5 7v13H8A3 3 0 0 0 5 17V4.5zM5 4.5A2.5 2.5 0 0 0 2.5 7v12"
 
 
 aircraft : Html msg

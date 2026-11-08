@@ -13,6 +13,7 @@ import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
 import Dict
 import File
 import LocalLog exposing (LocalLog)
+import LogSync exposing (Cursor)
 import Outbox exposing (OutboxOp)
 import Ports
 import Route exposing (Route)
@@ -28,6 +29,8 @@ type alias Model =
     , session : Maybe Session
     , logbooks : List Logbook
     , logs : Dict.Dict String (List LocalLog)
+    , logSync : Dict.Dict String Cursor
+    , syncWatermark : String
     , outbox : List OutboxOp
     , loginForm : LoginForm
     , editor : Maybe EditorState
@@ -86,6 +89,8 @@ init _ url key =
       , session = Nothing
       , logbooks = []
       , logs = Dict.empty
+      , logSync = Dict.empty
+      , syncWatermark = ""
       , outbox = []
       , loginForm = { email = "", password = "", baseUrl = "https://cloudy.fr/api/v1", advancedOpen = False }
       , editor = Nothing

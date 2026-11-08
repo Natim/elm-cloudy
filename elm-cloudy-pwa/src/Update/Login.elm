@@ -3,6 +3,7 @@ module Update.Login exposing (Msg(..), update)
 import Browser.Navigation as Nav
 import Cloudy
 import Cloudy.Client as Client
+import Cloudy.Data.Profile as Profile exposing (Profile)
 import Cloudy.Data.Token exposing (TokenResponse)
 import Cloudy.Request as Request
 import Effect exposing (Effect(..))
@@ -11,6 +12,7 @@ import Model exposing (Model)
 import Ports
 import Route exposing (Route(..))
 import Session
+import Update.Support as Support
 
 
 type Msg
@@ -20,6 +22,8 @@ type Msg
     | AdvancedToggled Bool
     | Submitted
     | GotToken (Result Http.Error TokenResponse)
+    | RefreshProfile
+    | GotProfile (Result Http.Error Profile)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Effect )
@@ -73,6 +77,7 @@ update msg model =
                             , accessToken = token.accessToken
                             , userId = token.userId
                             , email = model.loginForm.email
+                            , avatarUrl = Nothing
                             }
                     in
                     ( { model | session = Just session, busy = False, error = Nothing, route = Dashboard }
@@ -80,7 +85,7 @@ update msg model =
                         [ Ports.storageSaveSession (Session.encode session)
                         , Nav.pushUrl model.key (Route.toPath Dashboard)
                         ]
-                    , [ RefreshLogbooks, FlushOutbox ]
+                    , [ RefreshLogbooks, Effect.RefreshProfile, FlushOutbox ]
                     )
 
                 Err _ ->
@@ -88,3 +93,41 @@ update msg model =
                     , Nav.pushUrl model.key (Route.toPath Login)
                     , []
                     )
+
+        RefreshProfile ->
+            case model.session of
+                Nothing ->
+                    ( model, Cmd.none, [] )
+
+                Just session ->
+                    ( model
+                    , Cloudy.me (Session.toClient session)
+                        |> Request.send GotProfile
+                    , []
+                    )
+
+        GotProfile result ->
+            case ( model.session, result ) of
+                ( Just session, Ok profile ) ->
+                    let
+                        nextSession =
+                            { session | avatarUrl = profile.avatarUrl }
+                    in
+                    ( { model | session = Just nextSession }
+                    , Ports.storageSaveSession (Session.encode nextSession)
+                    , []
+                    )
+
+                ( Just _, Err err ) ->
+                    if Support.unauthorized err then
+                        let
+                            ( next, cmd ) =
+                                Support.logout model
+                        in
+                        ( next, cmd, [] )
+
+                    else
+                        ( model, Cmd.none, [] )
+
+                ( Nothing, _ ) ->
+                    ( model, Cmd.none, [] )

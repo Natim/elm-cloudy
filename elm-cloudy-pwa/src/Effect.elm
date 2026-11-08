@@ -5,6 +5,7 @@ import Cloudy.Data.Log exposing (LogEntry)
 
 type Effect
     = RefreshLogbooks
+    | RefreshProfile
     | FlushOutbox
     | RefreshLogs Int
     | RefreshAircraft Int

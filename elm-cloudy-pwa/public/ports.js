@@ -72,6 +72,8 @@
       session: readSessionCookie(),
       logbooks: [],
       logs: {},
+      logSync: {},
+      aircraft: {},
       outbox: [],
       online: navigator.onLine,
     };
@@ -84,6 +86,8 @@
         idbGet("logbooks"),
         idbGet("logs"),
         idbGet("outbox"),
+        idbGet("logSync"),
+        idbGet("aircraft"),
       ])
         .then(function (parts) {
           const cookieSession = readSessionCookie();
@@ -96,6 +100,8 @@
             logbooks: parts[1] || [],
             logs: parts[2] || {},
             outbox: parts[3] || [],
+            logSync: parts[4] || {},
+            aircraft: parts[5] || {},
             online: navigator.onLine,
           });
         })
@@ -120,6 +126,18 @@
     app.ports.storageSaveOutbox.subscribe(function (value) {
       idbSet("outbox", value);
     });
+
+    if (app.ports.storageSaveLogSync) {
+      app.ports.storageSaveLogSync.subscribe(function (value) {
+        idbSet("logSync", value);
+      });
+    }
+
+    if (app.ports.storageSaveAircraft) {
+      app.ports.storageSaveAircraft.subscribe(function (value) {
+        idbSet("aircraft", value);
+      });
+    }
 
     window.addEventListener("online", function () {
       app.ports.connectivityChanged.send(true);

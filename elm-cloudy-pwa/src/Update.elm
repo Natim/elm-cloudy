@@ -157,6 +157,8 @@ update msg model =
                                 | session = loaded.session
                                 , logbooks = loaded.logbooks
                                 , logs = loaded.logs
+                                , logSync = loaded.logSync
+                                , aircraft = loaded.aircraft
                                 , outbox = loaded.outbox
                                 , online = loaded.online
                                 , storageReady = True
@@ -166,8 +168,8 @@ update msg model =
 
                         effects =
                             if loaded.session /= Nothing then
-                                Update.RouteEffects.effectsForRoute next route
-                                    ++ [ RefreshLogbooks, FlushOutbox ]
+                                Update.RouteEffects.interactionEffects next route
+                                    ++ [ RefreshLogbooks, RefreshProfile, FlushOutbox ]
 
                             else
                                 []
@@ -199,7 +201,14 @@ update msg model =
                 ( { model | online = online }
                 , Cmd.none
                 , if online then
-                    [ FlushOutbox ]
+                    FlushOutbox
+                        :: (case Support.chosenLogbook model model.route of
+                                Just id ->
+                                    [ RefreshLogs id, RefreshAircraft id ]
+
+                                Nothing ->
+                                    []
+                           )
 
                   else
                     []
@@ -300,6 +309,9 @@ effectToMsg effect =
     case effect of
         RefreshLogbooks ->
             DashboardMsg Dashboard.RefreshLogbooks
+
+        RefreshProfile ->
+            LoginMsg Login.RefreshProfile
 
         FlushOutbox ->
             OutboxMsg Outbox.Flush

@@ -4,7 +4,9 @@ module Update.Support exposing
     , findLogbook
     , httpErrorMessage
     , logout
+    , persistAircraft
     , persistLogs
+    , persistSync
     , removeCreate
     , saveLocalLog
     , unauthorized
@@ -12,11 +14,13 @@ module Update.Support exposing
     )
 
 import Browser.Navigation as Nav
+import Cloudy.Data.Aircraft exposing (Aircraft)
 import Cloudy.Data.Logbook as Logbook
 import Dict
 import Http
 import Json.Encode as Encode
 import LocalLog exposing (LocalLog)
+import LogSync exposing (Cursor)
 import Model exposing (Model)
 import Outbox
 import Persisted
@@ -45,6 +49,16 @@ persistLogs logs =
     Ports.storageSaveLogs (StorageCodec.encodeLogs logs)
 
 
+persistSync : Dict.Dict String Cursor -> Cmd msg
+persistSync cursors =
+    Ports.storageSaveLogSync (LogSync.encode cursors)
+
+
+persistAircraft : Dict.Dict String (List Aircraft) -> Cmd msg
+persistAircraft aircraft =
+    Ports.storageSaveAircraft (Persisted.encodeAircraft aircraft)
+
+
 logout : Model -> ( Model, Cmd msg )
 logout model =
     ( { model
@@ -52,6 +66,8 @@ logout model =
         , route = Login
         , logbooks = []
         , logs = Dict.empty
+        , logSync = Dict.empty
+        , syncWatermark = ""
         , outbox = []
         , editor = Nothing
         , navOpen = False
@@ -67,6 +83,8 @@ logout model =
         [ Ports.storageSaveSession Encode.null
         , Ports.storageSaveLogbooks (Persisted.encodeLogbooks [])
         , Ports.storageSaveLogs (StorageCodec.encodeLogs Dict.empty)
+        , Ports.storageSaveLogSync (LogSync.encode Dict.empty)
+        , Ports.storageSaveAircraft (Persisted.encodeAircraft Dict.empty)
         , Ports.storageSaveOutbox (StorageCodec.encodeOutbox [])
         , Nav.pushUrl model.key (Route.toPath Login)
         ]

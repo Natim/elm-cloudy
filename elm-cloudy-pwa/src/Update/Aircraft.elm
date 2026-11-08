@@ -72,7 +72,10 @@ update msg model =
                                 Nothing ->
                                     { editor = model.aircraftEditor, pending = Nothing, error = model.error, cmd = Cmd.none }
                     in
-                    ( { model | aircraft = aircraft, aircraftEditor = opened.editor, pendingAircraft = opened.pending, error = opened.error }, opened.cmd, [] )
+                    ( { model | aircraft = aircraft, aircraftEditor = opened.editor, pendingAircraft = opened.pending, error = opened.error }
+                    , Cmd.batch [ opened.cmd, Support.persistAircraft aircraft ]
+                    , []
+                    )
 
                 Err err ->
                     if Support.unauthorized err then

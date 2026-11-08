@@ -71,11 +71,17 @@ update msg model =
                                     List.head books |> Maybe.map .id
 
                         refresh =
-                            case ( model.route, selected ) of
-                                ( Dashboard, Just id ) ->
-                                    [ Effect.RefreshLogs id, Effect.RefreshAircraft id ]
+                            case selected of
+                                Just id ->
+                                    (if model.logPaging == Just id then
+                                        []
 
-                                _ ->
+                                     else
+                                        [ Effect.RefreshLogs id ]
+                                    )
+                                        ++ [ Effect.RefreshAircraft id ]
+
+                                Nothing ->
                                     []
                     in
                     ( { model | logbooks = books, busy = False, selectedLogbookId = selected }

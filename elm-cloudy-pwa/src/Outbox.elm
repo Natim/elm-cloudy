@@ -2,6 +2,7 @@ module Outbox exposing
     ( OutboxOp(..)
     , applyCreateSuccess
     , applyReplaceSuccess
+    , applyServerLogs
     , decodeOp
     , dropHead
     , encodeOp
@@ -98,6 +99,41 @@ applyReplaceSuccess serverId entry logs =
         kept :: _ ->
             { kept | serverId = Just savedId, syncStatus = Synced, entry = entry }
                 :: List.filter (\log -> not (same log)) logs
+
+
+applyServerLogs : List LocalLog -> List LocalLog -> List LocalLog
+applyServerLogs incoming existing =
+    List.foldl applyServerLog existing incoming
+
+
+applyServerLog : LocalLog -> List LocalLog -> List LocalLog
+applyServerLog incoming logs =
+    case incoming.serverId of
+        Nothing ->
+            logs
+
+        Just id ->
+            if List.any (\log -> log.serverId == Just id && log.syncStatus /= Synced) logs then
+                logs
+
+            else if not (LogHelpers.isCurrent incoming.entry) then
+                List.filter (\log -> log.serverId /= Just id) logs
+
+            else
+                case List.filter (\log -> log.serverId == Just id) logs of
+                    [] ->
+                        logs ++ [ incoming ]
+
+                    _ ->
+                        List.map
+                            (\log ->
+                                if log.serverId == Just id then
+                                    incoming
+
+                                else
+                                    log
+                            )
+                            logs
 
 
 mergeServerPage : Bool -> List LocalLog -> List LocalLog -> List LocalLog

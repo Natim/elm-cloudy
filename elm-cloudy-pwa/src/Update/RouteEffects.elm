@@ -1,6 +1,8 @@
-module Update.RouteEffects exposing (effectsForRoute)
+module Update.RouteEffects exposing (effectsForRoute, interactionEffects)
 
+import Dict
 import Effect exposing (Effect(..))
+import LogSync
 import Model exposing (Model)
 import Route exposing (Route(..))
 import Update.Support as Support
@@ -8,38 +10,25 @@ import Update.Support as Support
 
 effectsForRoute : Model -> Route -> List Effect
 effectsForRoute model route =
+    interactionEffects model route ++ cachedFill model route
+
+
+interactionEffects : Model -> Route -> List Effect
+interactionEffects model route =
     case route of
-        Logs id ->
-            [ RefreshLogs id, RefreshAircraft id ]
-
-        Dashboard ->
-            case Support.chosenLogbook model Dashboard of
-                Just id ->
-                    [ RefreshLogs id, RefreshAircraft id ]
-
-                Nothing ->
-                    []
-
-        Aircraft id ->
-            [ RefreshAircraft id ]
-
         EditorEdit id clientId ->
-            (if shouldEditLog model id clientId then
+            if shouldEditLog model id clientId then
                 [ EditLog id clientId ]
 
-             else
+            else
                 []
-            )
-                ++ [ RefreshAircraft id ]
 
         EditorNew id ->
-            (if model.editor == Nothing then
+            if model.editor == Nothing then
                 [ StartNewLog id ]
 
-             else
+            else
                 []
-            )
-                ++ [ RefreshAircraft id ]
 
         AircraftNew id ->
             if shouldStartNewAircraft model id then
@@ -55,11 +44,65 @@ effectsForRoute model route =
             else
                 []
 
+        Logs _ ->
+            []
+
+        Dashboard ->
+            []
+
+        Aircraft _ ->
+            []
+
         Login ->
             []
 
         Logbooks ->
             []
+
+
+cachedFill : Model -> Route -> List Effect
+cachedFill model route =
+    case route of
+        Logs id ->
+            missingLogs model id ++ missingAircraft model id
+
+        Dashboard ->
+            case Support.chosenLogbook model Dashboard of
+                Just id ->
+                    missingLogs model id ++ missingAircraft model id
+
+                Nothing ->
+                    []
+
+        Aircraft id ->
+            missingAircraft model id
+
+        EditorEdit id _ ->
+            missingAircraft model id
+
+        EditorNew id ->
+            missingAircraft model id
+
+        _ ->
+            []
+
+
+missingLogs : Model -> Int -> List Effect
+missingLogs model logbookId =
+    if LogSync.isReady model.logSync model.logs logbookId then
+        []
+
+    else
+        [ RefreshLogs logbookId ]
+
+
+missingAircraft : Model -> Int -> List Effect
+missingAircraft model logbookId =
+    if Dict.member (String.fromInt logbookId) model.aircraft then
+        []
+
+    else
+        [ RefreshAircraft logbookId ]
 
 
 shouldEditLog : Model -> Int -> String -> Bool

@@ -10,18 +10,24 @@ type alias Session =
     , accessToken : String
     , userId : Int
     , email : String
+    , avatarUrl : Maybe String
     }
 
 
 decoder : Decoder Session
 decoder =
-    Decode.map4 Session
+    Decode.map5 Session
         (Decode.field "baseUrl" Decode.string)
         (Decode.field "accessToken" Decode.string)
         (Decode.field "userId" Decode.int)
         (Decode.oneOf
             [ Decode.field "email" Decode.string
             , Decode.succeed ""
+            ]
+        )
+        (Decode.oneOf
+            [ Decode.field "avatarUrl" (Decode.nullable Decode.string)
+            , Decode.succeed Nothing
             ]
         )
 
@@ -33,6 +39,7 @@ encode session =
         , ( "accessToken", Encode.string session.accessToken )
         , ( "userId", Encode.int session.userId )
         , ( "email", Encode.string session.email )
+        , ( "avatarUrl", Maybe.map Encode.string session.avatarUrl |> Maybe.withDefault Encode.null )
         ]
 
 

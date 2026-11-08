@@ -11,6 +11,7 @@ module Cloudy exposing
     , listAircraft
     , listLogbooks
     , listLogs
+    , me
     , patchAircraft
     , patchLog
     , patchLogbook
@@ -31,6 +32,7 @@ import Cloudy.Data.Log as Log exposing (LogEntry)
 import Cloudy.Data.LogListPage as LogListPage exposing (LogListPage)
 import Cloudy.Data.Logbook as Logbook exposing (Logbook, LogbookCreate, LogbookPatch)
 import Cloudy.Data.LogbookCategory exposing (LogbookCategory)
+import Cloudy.Data.Profile as Profile exposing (Profile)
 import Cloudy.Data.Report as Report exposing (ReportEntry)
 import Cloudy.Data.Token as Token exposing (TokenRequest, TokenResponse)
 import Cloudy.Logbooks as Logbooks
@@ -44,6 +46,11 @@ import Json.Encode as Encode
 token : Client -> TokenRequest -> Request TokenResponse
 token =
     AuthApi.token
+
+
+me : Client -> Request Profile
+me =
+    AuthApi.me
 
 
 listLogbooks : Client -> Request (List Logbook)

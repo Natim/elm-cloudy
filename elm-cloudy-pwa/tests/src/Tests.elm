@@ -2,9 +2,11 @@ module Tests exposing (all)
 
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.LogbookCategory as LogbookCategory
+import Dict
 import Expect
 import LocalLog exposing (LocalLog, SyncStatus(..))
 import LogHelpers
+import LogSync
 import LogbookFormat
 import MediaUrl
 import Outbox
@@ -150,6 +152,54 @@ all =
                     in
                     Expect.equal [ ( Just 7, PendingUpdate ), ( Just 8, Synced ) ]
                         (List.map (\log -> ( log.serverId, log.syncStatus )) merged)
+            , test "an incremental page updates, adds, and drops flights" <|
+                \_ ->
+                    let
+                        kept =
+                            synced 1 "2020-01-01T12:00:00" False
+
+                        stale =
+                            synced 2 "2020-01-02T12:00:00" False
+
+                        pending =
+                            { stale | syncStatus = PendingUpdate }
+
+                        changed =
+                            synced 1 "2020-02-01T12:00:00" False
+
+                        added =
+                            synced 3 "2020-02-02T12:00:00" False
+
+                        removed =
+                            synced 4 "2020-02-03T12:00:00" True
+
+                        storedRemoved =
+                            synced 4 "2020-01-04T12:00:00" False
+                    in
+                    Outbox.applyServerLogs [ changed, added, removed ] [ kept, pending, storedRemoved ]
+                        |> List.map (\log -> ( log.serverId, log.syncStatus, LogHelpers.updatedAt log.entry ))
+                        |> Expect.equal
+                            [ ( Just 1, Synced, "2020-02-01T12:00:00" )
+                            , ( Just 2, PendingUpdate, "2020-01-02T12:00:00" )
+                            , ( Just 3, Synced, "2020-02-02T12:00:00" )
+                            ]
+            , test "a stored logbook is ready and a cursor remembers its watermark" <|
+                \_ ->
+                    let
+                        logs =
+                            Dict.fromList [ ( "4", [ synced 1 "2020-05-01T00:00:00" False ] ) ]
+
+                        cursors =
+                            Dict.fromList [ ( "4", { complete = True, updatedAt = "2020-06-01T00:00:00" } ) ]
+                    in
+                    Expect.all
+                        [ \_ -> Expect.equal True (LogSync.isReady Dict.empty logs 4)
+                        , \_ -> Expect.equal (Just "2020-05-01T00:00:00") (LogSync.watermark Dict.empty logs 4)
+                        , \_ -> Expect.equal False (LogSync.isReady Dict.empty Dict.empty 4)
+                        , \_ -> Expect.equal (Just "2020-06-01T00:00:00") (LogSync.watermark cursors logs 4)
+                        , \_ -> Expect.equal False (LogSync.isReady (Dict.fromList [ ( "4", { complete = False, updatedAt = "" } ) ]) logs 4)
+                        ]
+                        ()
             , test "replace success keeps a single synced flight" <|
                 \_ ->
                     let
@@ -379,6 +429,25 @@ typed minutes aircraftType =
     { aircraftType = aircraftType
     , flights = 1
     , minutes = minutes
+    }
+
+
+synced : Int -> String -> Bool -> LocalLog
+synced serverId updatedAt isDeleted =
+    let
+        entry =
+            case LogHelpers.emptyEntry LogbookCategory.PlaneDgac 1 updatedAt of
+                PlaneDgacEntry log ->
+                    PlaneDgacEntry { log | id = serverId, updated_at = updatedAt, deleted = isDeleted }
+
+                other ->
+                    other
+    in
+    { clientId = "s-" ++ String.fromInt serverId
+    , serverId = Just serverId
+    , syncStatus = Synced
+    , category = LogbookCategory.PlaneDgac
+    , entry = entry
     }
 
 

@@ -5,11 +5,13 @@ module LogHelpers exposing
     , emptyEntry
     , files
     , flightDate
+    , isCurrent
     , logbookId
     , registration
     , serverId
     , setFlightDate
     , title
+    , updatedAt
     )
 
 import Cloudy.Data.AttachedFile exposing (AttachedFile)
@@ -41,6 +43,86 @@ serverId entry =
 
         ParachuteCloudyEntry log ->
             log.id
+
+
+updatedAt : LogEntry -> String
+updatedAt entry =
+    case entry of
+        PlaneDgacEntry log ->
+            log.updated_at
+
+        HelicopterDgacEntry log ->
+            log.updated_at
+
+        GliderDgacEntry log ->
+            log.updated_at
+
+        PlaneFcl1080Entry log ->
+            log.updated_at
+
+        UlmFfplumEntry log ->
+            log.updated_at
+
+        BalloonDgacEntry log ->
+            log.updated_at
+
+        ParachuteCloudyEntry log ->
+            log.updated_at
+
+
+isCurrent : LogEntry -> Bool
+isCurrent entry =
+    visible entry && not (deleted entry)
+
+
+visible : LogEntry -> Bool
+visible entry =
+    case entry of
+        PlaneDgacEntry log ->
+            log.visible
+
+        HelicopterDgacEntry log ->
+            log.visible
+
+        GliderDgacEntry log ->
+            log.visible
+
+        PlaneFcl1080Entry log ->
+            log.visible
+
+        UlmFfplumEntry log ->
+            log.visible
+
+        BalloonDgacEntry log ->
+            log.visible
+
+        ParachuteCloudyEntry log ->
+            log.visible
+
+
+deleted : LogEntry -> Bool
+deleted entry =
+    case entry of
+        PlaneDgacEntry log ->
+            log.deleted
+
+        HelicopterDgacEntry log ->
+            log.deleted
+
+        GliderDgacEntry log ->
+            log.deleted
+
+        PlaneFcl1080Entry log ->
+            log.deleted
+
+        UlmFfplumEntry log ->
+            log.deleted
+
+        BalloonDgacEntry log ->
+            log.deleted
+
+        ParachuteCloudyEntry log ->
+            log.deleted
 
 
 logbookId : LogEntry -> Int

@@ -2,9 +2,10 @@ module View.Shell exposing (Config, Section(..), categoryLabel, displayName, vie
 
 import Cloudy.Data.Logbook exposing (Logbook)
 import Cloudy.Data.LogbookCategory as LogbookCategory exposing (LogbookCategory(..))
-import Html exposing (Html, aside, button, div, h1, label, option, p, select, span, text)
-import Html.Attributes exposing (attribute, class, selected, type_, value)
+import Html exposing (Html, aside, button, div, img, label, option, p, select, span, text)
+import Html.Attributes exposing (alt, attribute, class, selected, src, type_, value)
 import Html.Events exposing (onClick, onInput)
+import MediaUrl
 import View.Icon as Icon
 
 
@@ -18,6 +19,8 @@ type alias Config msg =
     { logbooks : List Logbook
     , selectedId : Maybe Int
     , email : String
+    , baseUrl : String
+    , avatarUrl : Maybe String
     , online : Bool
     , pending : Int
     , open : Bool
@@ -58,8 +61,7 @@ view config content =
                 )
             ]
             [ div [ class "brand" ]
-                [ span [ class "brand-mark" ] [ Icon.book ]
-                , h1 [] [ text "Cloudy" ]
+                [ img [ class "brand-logo", src "/elm-cloudy/logo.png", alt "Cloudy" ] []
                 ]
             , switcher config
             , Html.nav [ class "nav" ]
@@ -79,7 +81,7 @@ view config content =
                     ]
                     [ text (statusText config) ]
                 , div [ class "user" ]
-                    [ span [ class "avatar" ] [ text (initials config.email) ]
+                    [ avatar config
                     , span [ class "user-meta" ]
                         [ span [ class "user-name" ] [ text (displayName config.email) ]
                         , span [ class "user-role" ] [ text "Pilote" ]
@@ -202,6 +204,17 @@ displayName email =
 
         [] ->
             "Pilote"
+
+
+avatar : Config msg -> Html msg
+avatar config =
+    case config.avatarUrl of
+        Just url ->
+            span [ class "avatar" ]
+                [ img [ src (MediaUrl.absoluteUrl config.baseUrl url), alt "" ] [] ]
+
+        Nothing ->
+            span [ class "avatar" ] [ text (initials config.email) ]
 
 
 initials : String -> String

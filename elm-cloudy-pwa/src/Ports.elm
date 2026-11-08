@@ -4,6 +4,8 @@ port module Ports exposing
     , nowRequest
     , storageLoad
     , storageLoaded
+    , storageSaveAircraft
+    , storageSaveLogSync
     , storageSaveLogbooks
     , storageSaveLogs
     , storageSaveOutbox
@@ -30,6 +32,12 @@ port storageSaveLogs : Json.Encode.Value -> Cmd msg
 
 
 port storageSaveOutbox : Json.Encode.Value -> Cmd msg
+
+
+port storageSaveLogSync : Json.Encode.Value -> Cmd msg
+
+
+port storageSaveAircraft : Json.Encode.Value -> Cmd msg
 
 
 port connectivityChanged : (Bool -> msg) -> Sub msg

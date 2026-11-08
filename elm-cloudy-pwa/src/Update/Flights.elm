@@ -11,15 +11,22 @@ import Effect exposing (Effect(..))
 import Http
 import LocalLog exposing (LocalLog)
 import LogHelpers
+import LogSync
 import Model exposing (Model)
+import Outbox
 import Route exposing (Route(..))
 import Session
 import Update.Support as Support
 
 
+type FetchMode
+    = Full
+    | Since String
+
+
 type Msg
     = Refresh Int
-    | GotPage Int LogbookCategory.LogbookCategory Int (Maybe String) (Result Http.Error LogListPage.LogListPage)
+    | GotPage Int LogbookCategory.LogbookCategory Int FetchMode (Maybe String) (Result Http.Error LogListPage.LogListPage)
     | StartNew Int
     | Edit Int String
 
@@ -37,21 +44,19 @@ update msg model =
             case ( model.session, Support.findLogbook model logbookId ) of
                 ( Just session, Just book ) ->
                     let
-                        client =
-                            Session.toClient session
+                        mode =
+                            if LogSync.isReady model.logSync model.logs logbookId then
+                                case LogSync.watermark model.logSync model.logs logbookId of
+                                    Just since ->
+                                        Since since
 
-                        generation =
-                            model.logFetchId + 1
+                                    Nothing ->
+                                        Full
+
+                            else
+                                Full
                     in
-                    ( { model
-                        | busy = True
-                        , logFetchId = generation
-                        , logPaging = Just logbookId
-                        , logsPartial = abandonPaging model logbookId
-                      }
-                    , fetchLogsPage client book.category logbookId generation Nothing
-                    , []
-                    )
+                    startFetch session book.category mode logbookId model
 
                 _ ->
                     case model.session of
@@ -64,7 +69,7 @@ update msg model =
                         Just _ ->
                             ( model, Cmd.none, [] )
 
-        GotPage logbookId category generation pageToken result ->
+        GotPage logbookId category generation mode pageToken result ->
             if generation /= model.logFetchId then
                 ( model, Cmd.none, [] )
 
@@ -75,8 +80,14 @@ update msg model =
                             key =
                                 String.fromInt logbookId
 
+                            incoming =
+                                mergePage category page
+
                             logs =
-                                Dict.insert key (Support.appendLogPage key (pageToken == Nothing) (mergePage category page) model.logs) model.logs
+                                Dict.insert key (mergeLogs mode pageToken incoming key model.logs) model.logs
+
+                            watermark =
+                                List.foldl (\log acc -> LogSync.later acc (LogHelpers.updatedAt log.entry)) model.syncWatermark incoming
 
                             busy =
                                 if pageToken == Nothing then
@@ -86,16 +97,16 @@ update msg model =
                                     model.busy
 
                             loaded =
-                                { model | logs = logs, error = Nothing, busy = busy }
+                                { model | logs = logs, error = Nothing, busy = busy, syncWatermark = watermark }
                         in
                         case page.nextPageToken of
                             Just nextToken ->
                                 case model.session of
                                     Just session ->
-                                        ( { loaded | logPaging = Just logbookId }
+                                        ( { loaded | logPaging = paging mode logbookId }
                                         , Cmd.batch
                                             [ Support.persistLogs logs
-                                            , fetchLogsPage (Session.toClient session) category logbookId generation (Just nextToken)
+                                            , fetchLogsPage (Session.toClient session) category logbookId generation mode (Just nextToken)
                                             ]
                                         , []
                                         )
@@ -107,8 +118,12 @@ update msg model =
                                         )
 
                             Nothing ->
-                                ( { loaded | logPaging = Nothing, logsPartial = clearPartial model.logsPartial logbookId }
-                                , Support.persistLogs logs
+                                let
+                                    cursors =
+                                        Dict.insert key { complete = True, updatedAt = watermark } model.logSync
+                                in
+                                ( { loaded | logPaging = Nothing, logsPartial = clearPartial model.logsPartial logbookId, logSync = cursors }
+                                , Cmd.batch [ Support.persistLogs logs, Support.persistSync cursors ]
                                 , []
                                 )
 
@@ -120,12 +135,21 @@ update msg model =
                             in
                             ( next, cmd, [] )
 
+                        else if incrementalRejected mode err then
+                            case ( model.session, Support.findLogbook model logbookId ) of
+                                ( Just session, Just book ) ->
+                                    startFetch session book.category Full logbookId model
+
+                                _ ->
+                                    ( model, Cmd.none, [] )
+
                         else
                             ( { model
                                 | busy = False
                                 , logPaging = Nothing
+                                , syncWatermark = ""
                                 , logsPartial =
-                                    if pageToken == Nothing then
+                                    if pageToken == Nothing || isSince mode then
                                         model.logsPartial
 
                                     else
@@ -142,10 +166,123 @@ update msg model =
                             )
 
 
-fetchLogsPage : Client.Client -> LogbookCategory.LogbookCategory -> Int -> Int -> Maybe String -> Cmd Msg
-fetchLogsPage client category logbookId generation pageToken =
-    Cloudy.listLogs client category logbookId { limit = Just 100, pageToken = pageToken, dateFrom = Nothing, dateTo = Nothing }
-        |> Request.send (GotPage logbookId category generation pageToken)
+startFetch : Session.Session -> LogbookCategory.LogbookCategory -> FetchMode -> Int -> Model -> ( Model, Cmd Msg, List Effect )
+startFetch session category mode logbookId model =
+    let
+        generation =
+            model.logFetchId + 1
+
+        key =
+            String.fromInt logbookId
+
+        cursors =
+            case mode of
+                Full ->
+                    Dict.insert key { complete = False, updatedAt = "" } model.logSync
+
+                Since _ ->
+                    model.logSync
+
+        next =
+            { model
+                | busy =
+                    case mode of
+                        Full ->
+                            True
+
+                        Since _ ->
+                            model.busy
+                , logFetchId = generation
+                , logPaging = paging mode logbookId
+                , logsPartial =
+                    case mode of
+                        Full ->
+                            abandonPaging model logbookId
+
+                        Since _ ->
+                            model.logsPartial
+                , logSync = cursors
+                , syncWatermark =
+                    case mode of
+                        Full ->
+                            ""
+
+                        Since since ->
+                            since
+            }
+    in
+    ( next
+    , Cmd.batch
+        [ case mode of
+            Full ->
+                Support.persistSync cursors
+
+            Since _ ->
+                Cmd.none
+        , fetchLogsPage (Session.toClient session) category logbookId generation mode Nothing
+        ]
+    , []
+    )
+
+
+paging : FetchMode -> Int -> Maybe Int
+paging mode logbookId =
+    case mode of
+        Full ->
+            Just logbookId
+
+        Since _ ->
+            Nothing
+
+
+isSince : FetchMode -> Bool
+isSince mode =
+    case mode of
+        Since _ ->
+            True
+
+        Full ->
+            False
+
+
+incrementalRejected : FetchMode -> Http.Error -> Bool
+incrementalRejected mode err =
+    case ( mode, err ) of
+        ( Since _, Http.BadStatus code ) ->
+            code == 400 || code == 422
+
+        _ ->
+            False
+
+
+mergeLogs : FetchMode -> Maybe String -> List LocalLog -> String -> Dict.Dict String (List LocalLog) -> List LocalLog
+mergeLogs mode pageToken incoming key logs =
+    case mode of
+        Since _ ->
+            Outbox.applyServerLogs incoming (Dict.get key logs |> Maybe.withDefault [])
+
+        Full ->
+            Support.appendLogPage key (pageToken == Nothing) incoming logs
+
+
+fetchLogsPage : Client.Client -> LogbookCategory.LogbookCategory -> Int -> Int -> FetchMode -> Maybe String -> Cmd Msg
+fetchLogsPage client category logbookId generation mode pageToken =
+    Cloudy.listLogs client
+        category
+        logbookId
+        { limit = Just 100
+        , pageToken = pageToken
+        , dateFrom = Nothing
+        , dateTo = Nothing
+        , updatedSince =
+            case mode of
+                Since since ->
+                    Just since
+
+                Full ->
+                    Nothing
+        }
+        |> Request.send (GotPage logbookId category generation mode pageToken)
 
 
 abandonPaging : Model -> Int -> Maybe Int

@@ -16,6 +16,7 @@ type alias ListQuery =
     , pageToken : Maybe String
     , dateFrom : Maybe String
     , dateTo : Maybe String
+    , updatedSince : Maybe String
     }
 
 
@@ -28,6 +29,7 @@ list client category logbookId query =
                 , Maybe.map (\v -> ( "page_token", v )) query.pageToken
                 , Maybe.map (\v -> ( "date_from", v )) query.dateFrom
                 , Maybe.map (\v -> ( "date_to", v )) query.dateTo
+                , Maybe.map (\v -> ( "updated_since", v )) query.updatedSince
                 ]
     in
     Request.get client [ "logbooks", String.fromInt logbookId, "logs" ] params (LogListPage.decoder category)

@@ -10,9 +10,9 @@
   "lang": "fr",
   "icons": [
     {
-      "src": "/elm-cloudy/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/elm-cloudy/favicon.ico",
+      "sizes": "16x16",
+      "type": "image/png",
       "purpose": "any"
     }
   ]
