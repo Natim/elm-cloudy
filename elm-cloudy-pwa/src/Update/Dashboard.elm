@@ -11,6 +11,7 @@ import Persisted
 import Ports
 import Route exposing (Route(..))
 import Session
+import Stats exposing (Period)
 import Update.Support as Support
 
 
@@ -20,6 +21,7 @@ type Msg
     | LogbookSelected Int
     | NewFlight Int
     | OpenAircraft
+    | PeriodSelected Period
 
 
 update : Msg -> Model -> ( Model, Cmd Msg, List Effect.Effect )
@@ -33,6 +35,9 @@ update msg model =
 
         OpenAircraft ->
             ( model, Cmd.none, [ Effect.OpenAircraft ] )
+
+        PeriodSelected period ->
+            ( { model | statsPeriod = period }, Cmd.none, [] )
 
         RefreshLogbooks ->
             case model.session of

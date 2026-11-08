@@ -812,6 +812,37 @@ h1 {
   margin-top: 1.25rem;
 }
 
+.period-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 0.45rem;
+}
+
+.period-switch button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.38rem 0.75rem;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.period-switch button.active {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  font-weight: 650;
+}
+
+.period-caption {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -825,8 +856,31 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.card-split > .card {
+.card-split > .card,
+.card-stack > .card {
   margin-bottom: 0;
+}
+
+.card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.class-values {
+  display: grid;
+  grid-template-columns: 5.5rem 5.5rem;
+  column-gap: 0.85rem;
+  flex: none;
+  text-align: right;
+}
+
+.class-head-row {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .stat-card,
@@ -938,7 +992,8 @@ h1 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
-  .card-split:has(> .card + .card) {
+  .card-split:has(> .card + .card),
+  .card-split:has(> .card + .card-stack) {
     grid-template-columns: 1fr 1fr;
   }
 }

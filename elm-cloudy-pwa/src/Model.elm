@@ -17,6 +17,7 @@ import Outbox exposing (OutboxOp)
 import Ports
 import Route exposing (Route)
 import Session exposing (Session)
+import Stats exposing (Day, Period(..))
 import Url exposing (Url)
 
 
@@ -42,6 +43,8 @@ type alias Model =
     , logsPartial : Maybe Int
     , storageReady : Bool
     , pendingNew : Maybe ( Int, LogbookCategory )
+    , today : Maybe Day
+    , statsPeriod : Period
     }
 
 
@@ -98,6 +101,8 @@ init _ url key =
       , logsPartial = Nothing
       , storageReady = False
       , pendingNew = Nothing
+      , today = Nothing
+      , statsPeriod = LastCompleteMonth
       }
     , Ports.storageLoad ()
     )

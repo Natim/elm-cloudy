@@ -1,4 +1,4 @@
-module Update exposing (Msg(..), update)
+module Update exposing (Msg(..), requestClock, update)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
@@ -9,7 +9,9 @@ import Model exposing (Model, init)
 import Persisted
 import Ports
 import Route exposing (Route(..))
+import Stats
 import Task
+import Time
 import Update.Aircraft as Aircraft
 import Update.Dashboard as Dashboard
 import Update.Editor as Editor
@@ -34,6 +36,7 @@ type Msg
     | EditorMsg Editor.Msg
     | AircraftMsg Aircraft.Msg
     | OutboxMsg Outbox.Msg
+    | ClockReceived Time.Zone Time.Posix
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -249,6 +252,9 @@ update msg model =
             in
             wrap ( next, Cmd.map AircraftMsg cmd, effects )
 
+        ClockReceived zone now ->
+            ( { model | today = Just (dayFromZone zone now) }, Cmd.none )
+
         OutboxMsg outboxMsg ->
             let
                 result =
@@ -273,6 +279,9 @@ enterRouteCmd model route =
 
         Logbooks ->
             Nav.pushUrl model.key (Route.toPath Dashboard)
+
+        Dashboard ->
+            requestClock
 
         _ ->
             Cmd.none
@@ -320,3 +329,58 @@ effectToMsg effect =
 cmdMsg : Msg -> Cmd Msg
 cmdMsg message =
     Task.succeed message |> Task.perform identity
+
+
+requestClock : Cmd Msg
+requestClock =
+    Time.here
+        |> Task.andThen (\zone -> Task.map (ClockReceived zone) Time.now)
+        |> Task.perform identity
+
+
+dayFromZone : Time.Zone -> Time.Posix -> Stats.Day
+dayFromZone zone now =
+    { year = Time.toYear zone now
+    , month = monthNumber (Time.toMonth zone now)
+    , day = Time.toDay zone now
+    }
+
+
+monthNumber : Time.Month -> Int
+monthNumber month =
+    case month of
+        Time.Jan ->
+            1
+
+        Time.Feb ->
+            2
+
+        Time.Mar ->
+            3
+
+        Time.Apr ->
+            4
+
+        Time.May ->
+            5
+
+        Time.Jun ->
+            6
+
+        Time.Jul ->
+            7
+
+        Time.Aug ->
+            8
+
+        Time.Sep ->
+            9
+
+        Time.Oct ->
+            10
+
+        Time.Nov ->
+            11
+
+        Time.Dec ->
+            12

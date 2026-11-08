@@ -5,10 +5,10 @@ import Dict
 import Html exposing (Html, button, div, h2, p, span, strong, text)
 import Html.Attributes exposing (class, type_)
 import Html.Events exposing (onClick)
-import LocalLog
+import LocalLog exposing (LocalLog)
 import Model exposing (Model)
 import Route exposing (Route)
-import Stats
+import Stats exposing (Period(..))
 import Update.Dashboard as Dashboard
 import View.Shell as Shell
 import View.Stats as StatsView
@@ -36,8 +36,11 @@ view model =
                     StatsView.view
                         { title = "Bonjour " ++ Shell.displayName email
                         , subtitle = book.name ++ " · " ++ Shell.categoryLabel book.category
-                        , summary = Stats.summarize logs
+                        , summary = periodSummary model.statsPeriod model.today logs
                         , coverage = logCoverage model book.id
+                        , period = model.statsPeriod
+                        , periodText = periodCaption model.statsPeriod model.today
+                        , onPeriod = Dashboard.PeriodSelected
                         , onNewFlight = Dashboard.NewFlight book.id
                         , onAircraft = Dashboard.OpenAircraft
                         }
@@ -120,6 +123,34 @@ findBook model id =
     model.logbooks
         |> List.filter (\book -> book.id == id)
         |> List.head
+
+
+periodSummary : Period -> Maybe Stats.Day -> List LocalLog -> Maybe Stats.Summary
+periodSummary period today logs =
+    case ( period, today ) of
+        ( All, _ ) ->
+            Just (Stats.summarize logs)
+
+        ( _, Just day ) ->
+            Just (Stats.summarize (Stats.inPeriod period day logs))
+
+        ( _, Nothing ) ->
+            Nothing
+
+
+periodCaption : Period -> Maybe Stats.Day -> String
+periodCaption period today =
+    case period of
+        All ->
+            "Tous les vols"
+
+        _ ->
+            case today of
+                Just day ->
+                    Stats.periodText period day
+
+                Nothing ->
+                    "Calcul de la période…"
 
 
 logCoverage : Model -> Int -> StatsView.Coverage

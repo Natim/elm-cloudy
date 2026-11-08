@@ -1,4 +1,16 @@
-module Stats exposing (AircraftTotal, Summary, shownAircraft, summarize)
+module Stats exposing
+    ( AircraftTotal
+    , ClassRow
+    , Day
+    , Period(..)
+    , Summary
+    , inPeriod
+    , periodName
+    , periodText
+    , periods
+    , shownAircraft
+    , summarize
+    )
 
 import Cloudy.Data.Log exposing (LogEntry(..))
 import Cloudy.Data.Log.BalloonDgac as BalloonDgac
@@ -9,6 +21,7 @@ import Cloudy.Data.Log.PlaneFcl1080 as PlaneFcl1080
 import Cloudy.Data.Log.UlmFfplum as UlmFfplum
 import Dict exposing (Dict)
 import LocalLog exposing (LocalLog)
+import LogHelpers
 import LogbookFormat
 
 
@@ -19,6 +32,15 @@ type alias Summary =
     , landings : Maybe Int
     , details : List ( String, String )
     , byAircraft : List AircraftTotal
+    , byClass : List ClassRow
+    , unclassifiedMinutes : Int
+    }
+
+
+type alias ClassRow =
+    { label : String
+    , sep : Int
+    , mep : Int
     }
 
 
@@ -34,6 +56,9 @@ summarize logs =
     let
         fromLogs =
             List.foldl addLog emptyTotals logs
+
+        classes =
+            classSplit logs
     in
     { flights = fromLogs.flights
     , minutes = Just fromLogs.minutes
@@ -41,6 +66,8 @@ summarize logs =
     , landings = Just fromLogs.landings
     , details = flightDetails logs
     , byAircraft = aircraftTotals logs
+    , byClass = classes.rows
+    , unclassifiedMinutes = classes.unclassified
     }
 
 
@@ -137,17 +164,170 @@ balloonFlightDetails logs =
 fclFlightDetails : List LocalLog -> List ( String, String )
 fclFlightDetails logs =
     keep
-        [ ( "Temps de vol", LogbookFormat.showMinutes (summedInt fclMinutes .total_time_flight logs) )
-        , ( "Pilote seul", LogbookFormat.showMinutes (summedInt fclMinutes .single_pilot_time logs) )
-        , ( "Multipilote", LogbookFormat.showMinutes (summedInt fclMinutes .multi_pilot_time logs) )
-        , ( "Commandant de bord", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_in_cmd logs) )
-        , ( "Double commande", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_dual logs) )
-        , ( "Copilote", LogbookFormat.showMinutes (summedInt fclMinutes .co_pilot_minutes logs) )
-        , ( "Nuit", LogbookFormat.showMinutes (summedInt fclMinutes .op_time_night logs) )
-        , ( "IFR", LogbookFormat.showMinutes (summedInt fclMinutes .op_time_ifr logs) )
-        , ( "Instruction", LogbookFormat.showMinutes (summedInt fclMinutes .pilot_time_inst logs) )
-        , ( "Simulateur", LogbookFormat.showMinutes (summedInt fclMinutes .synthetic_time logs) )
-        ]
+        (List.map (summed fclMinutes logs) fclDetailFields
+            ++ [ ( "Simulateur", LogbookFormat.showMinutes (summedInt fclMinutes .synthetic_time logs) ) ]
+        )
+
+
+fclDetailFields : List ( String, PlaneFcl1080.Log -> Int )
+fclDetailFields =
+    [ ( "Temps de vol", .total_time_flight )
+    , ( "Pilote seul", .single_pilot_time )
+    , ( "Multipilote", .multi_pilot_time )
+    , ( "Commandant de bord", .pilot_time_in_cmd )
+    , ( "Double commande", .pilot_time_dual )
+    , ( "Copilote", .co_pilot_minutes )
+    , ( "Nuit", .op_time_night )
+    , ( "IFR", .op_time_ifr )
+    , ( "Instruction", .pilot_time_inst )
+    ]
+
+
+classSplit : List LocalLog -> { rows : List ClassRow, unclassified : Int }
+classSplit logs =
+    case logs of
+        [] ->
+            { rows = [], unclassified = 0 }
+
+        first :: _ ->
+            case first.entry of
+                PlaneFcl1080Entry _ ->
+                    { rows = fclClassRows logs, unclassified = fclUnclassified logs }
+
+                PlaneDgacEntry _ ->
+                    { rows = planeClassRows logs, unclassified = 0 }
+
+                HelicopterDgacEntry _ ->
+                    { rows = planeClassRows logs, unclassified = 0 }
+
+                _ ->
+                    { rows = [], unclassified = 0 }
+
+
+fclClassRows : List LocalLog -> List ClassRow
+fclClassRows logs =
+    fclDetailFields
+        |> List.map
+            (\( label, field ) ->
+                List.foldl (addFclClass field) { label = label, sep = 0, mep = 0 } logs
+            )
+        |> List.filter (\row -> row.sep > 0 || row.mep > 0)
+
+
+addFclClass : (PlaneFcl1080.Log -> Int) -> LocalLog -> ClassRow -> ClassRow
+addFclClass field log row =
+    case log.entry of
+        PlaneFcl1080Entry entry ->
+            let
+                minutes =
+                    field entry
+            in
+            if entry.single_pilot_me then
+                { row | mep = row.mep + minutes }
+
+            else if entry.single_pilot_se then
+                { row | sep = row.sep + minutes }
+
+            else
+                row
+
+        _ ->
+            row
+
+
+fclUnclassified : List LocalLog -> Int
+fclUnclassified logs =
+    List.foldl
+        (\log total ->
+            case log.entry of
+                PlaneFcl1080Entry entry ->
+                    if entry.single_pilot_se || entry.single_pilot_me then
+                        total
+
+                    else
+                        total + entry.total_time_flight
+
+                _ ->
+                    total
+        )
+        0
+        logs
+
+
+planeClassRows : List LocalLog -> List ClassRow
+planeClassRows logs =
+    [ planeClassSum "Temps de vol" planeSepMinutes planeMepMinutes logs
+    , planeClassSum "Double commande" planeSepDual planeMepDual logs
+    , planeClassSum "Commandant de bord" planeSepCaptain planeMepCaptain logs
+    , planeClassSum "Copilote" (\_ -> 0) planeMepCoPilot logs
+    , planeClassSum "Nuit" planeSepNight planeMepNight logs
+    ]
+        |> List.filter (\row -> row.sep > 0 || row.mep > 0)
+
+
+planeClassSum : String -> (PlaneDgac.Log -> Int) -> (PlaneDgac.Log -> Int) -> List LocalLog -> ClassRow
+planeClassSum label sepOf mepOf logs =
+    List.foldl (addPlaneClass sepOf mepOf) { label = label, sep = 0, mep = 0 } logs
+
+
+addPlaneClass : (PlaneDgac.Log -> Int) -> (PlaneDgac.Log -> Int) -> LocalLog -> ClassRow -> ClassRow
+addPlaneClass sepOf mepOf log row =
+    case log.entry of
+        PlaneDgacEntry entry ->
+            { row | sep = row.sep + sepOf entry, mep = row.mep + mepOf entry }
+
+        HelicopterDgacEntry entry ->
+            { row | sep = row.sep + sepOf entry, mep = row.mep + mepOf entry }
+
+        _ ->
+            row
+
+
+planeSepMinutes : PlaneDgac.Log -> Int
+planeSepMinutes log =
+    planeSepDual log + planeSepCaptain log
+
+
+planeMepMinutes : PlaneDgac.Log -> Int
+planeMepMinutes log =
+    planeMepDual log + planeMepCaptain log + planeMepCoPilot log
+
+
+planeSepDual : PlaneDgac.Log -> Int
+planeSepDual log =
+    log.single_engine_day_dual_minutes + log.single_engine_night_dual_minutes
+
+
+planeMepDual : PlaneDgac.Log -> Int
+planeMepDual log =
+    log.multi_engine_day_dual_minutes + log.multi_engine_night_dual_minutes
+
+
+planeSepCaptain : PlaneDgac.Log -> Int
+planeSepCaptain log =
+    log.single_engine_day_captain_minutes + log.single_engine_night_captain_minutes
+
+
+planeMepCaptain : PlaneDgac.Log -> Int
+planeMepCaptain log =
+    log.multi_engine_day_captain_minutes + log.multi_engine_night_captain_minutes
+
+
+planeMepCoPilot : PlaneDgac.Log -> Int
+planeMepCoPilot log =
+    log.multi_engine_day_co_pilot_minutes + log.multi_engine_night_co_pilot_minutes
+
+
+planeSepNight : PlaneDgac.Log -> Int
+planeSepNight log =
+    log.single_engine_night_dual_minutes + log.single_engine_night_captain_minutes
+
+
+planeMepNight : PlaneDgac.Log -> Int
+planeMepNight log =
+    log.multi_engine_night_dual_minutes
+        + log.multi_engine_night_captain_minutes
+        + log.multi_engine_night_co_pilot_minutes
 
 
 ulmFlightDetails : List LocalLog -> List ( String, String )
@@ -245,6 +425,285 @@ aircraftTotals logs =
         |> List.foldl insertAircraft Dict.empty
         |> Dict.values
         |> List.sortBy (\item -> ( -item.minutes, item.aircraftType ))
+
+
+type Period
+    = LastCompleteMonth
+    | Last12Months
+    | Last24Months
+    | All
+
+
+type alias Day =
+    { year : Int
+    , month : Int
+    , day : Int
+    }
+
+
+periods : List Period
+periods =
+    [ LastCompleteMonth, Last12Months, Last24Months, All ]
+
+
+periodName : Period -> String
+periodName period =
+    case period of
+        LastCompleteMonth ->
+            "Mois dernier"
+
+        Last12Months ->
+            "12 derniers mois"
+
+        Last24Months ->
+            "24 derniers mois"
+
+        All ->
+            "Totalité"
+
+
+periodText : Period -> Day -> String
+periodText period today =
+    case period of
+        LastCompleteMonth ->
+            let
+                start =
+                    addMonths -1 { today | day = 1 }
+            in
+            capitalize (monthName start.month) ++ " " ++ String.fromInt start.year
+
+        Last12Months ->
+            rangeText (addMonths -12 today) today
+
+        Last24Months ->
+            rangeText (addMonths -24 today) today
+
+        All ->
+            "Tous les vols"
+
+
+inPeriod : Period -> Day -> List LocalLog -> List LocalLog
+inPeriod period today logs =
+    case bounds period today of
+        Nothing ->
+            logs
+
+        Just ( from, to ) ->
+            List.filter (flightInRange from to) logs
+
+
+bounds : Period -> Day -> Maybe ( String, String )
+bounds period today =
+    case period of
+        LastCompleteMonth ->
+            let
+                start =
+                    addMonths -1 { today | day = 1 }
+            in
+            Just ( iso start, iso { start | day = daysInMonth start.year start.month } )
+
+        Last12Months ->
+            Just ( iso (addMonths -12 today), iso today )
+
+        Last24Months ->
+            Just ( iso (addMonths -24 today), iso today )
+
+        All ->
+            Nothing
+
+
+flightInRange : String -> String -> LocalLog -> Bool
+flightInRange from to log =
+    let
+        date =
+            String.left 10 (LogHelpers.flightDate log.entry)
+    in
+    String.length date == 10 && date >= from && date <= to
+
+
+rangeText : Day -> Day -> String
+rangeText from to =
+    formatDay from ++ " – " ++ formatDay to
+
+
+formatDay : Day -> String
+formatDay day =
+    String.fromInt day.day ++ " " ++ shortMonth day.month ++ " " ++ String.fromInt day.year
+
+
+iso : Day -> String
+iso day =
+    String.fromInt day.year ++ "-" ++ pad2 day.month ++ "-" ++ pad2 day.day
+
+
+addMonths : Int -> Day -> Day
+addMonths delta day =
+    let
+        index =
+            day.year * 12 + (day.month - 1) + delta
+
+        year =
+            index // 12
+
+        month =
+            modBy 12 index + 1
+    in
+    { year = year
+    , month = month
+    , day = min day.day (daysInMonth year month)
+    }
+
+
+daysInMonth : Int -> Int -> Int
+daysInMonth year month =
+    case month of
+        1 ->
+            31
+
+        2 ->
+            if isLeap year then
+                29
+
+            else
+                28
+
+        3 ->
+            31
+
+        4 ->
+            30
+
+        5 ->
+            31
+
+        6 ->
+            30
+
+        7 ->
+            31
+
+        8 ->
+            31
+
+        9 ->
+            30
+
+        10 ->
+            31
+
+        11 ->
+            30
+
+        12 ->
+            31
+
+        _ ->
+            30
+
+
+isLeap : Int -> Bool
+isLeap year =
+    modBy 4 year == 0 && (modBy 100 year /= 0 || modBy 400 year == 0)
+
+
+pad2 : Int -> String
+pad2 n =
+    if n < 10 then
+        "0" ++ String.fromInt n
+
+    else
+        String.fromInt n
+
+
+capitalize : String -> String
+capitalize raw =
+    String.toUpper (String.left 1 raw) ++ String.dropLeft 1 raw
+
+
+monthName : Int -> String
+monthName month =
+    case month of
+        1 ->
+            "janvier"
+
+        2 ->
+            "février"
+
+        3 ->
+            "mars"
+
+        4 ->
+            "avril"
+
+        5 ->
+            "mai"
+
+        6 ->
+            "juin"
+
+        7 ->
+            "juillet"
+
+        8 ->
+            "août"
+
+        9 ->
+            "septembre"
+
+        10 ->
+            "octobre"
+
+        11 ->
+            "novembre"
+
+        12 ->
+            "décembre"
+
+        _ ->
+            ""
+
+
+shortMonth : Int -> String
+shortMonth month =
+    case month of
+        1 ->
+            "jan."
+
+        2 ->
+            "fév."
+
+        3 ->
+            "mar."
+
+        4 ->
+            "avr."
+
+        5 ->
+            "mai"
+
+        6 ->
+            "juin"
+
+        7 ->
+            "juil."
+
+        8 ->
+            "août"
+
+        9 ->
+            "sep."
+
+        10 ->
+            "oct."
+
+        11 ->
+            "nov."
+
+        12 ->
+            "déc."
+
+        _ ->
+            ""
 
 
 shownAircraft : List AircraftTotal -> List AircraftTotal
