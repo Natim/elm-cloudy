@@ -854,6 +854,7 @@ h1 {
   grid-template-columns: 1fr;
   gap: 1rem;
   margin-bottom: 1rem;
+  align-items: start;
 }
 
 .card-split > .card,
